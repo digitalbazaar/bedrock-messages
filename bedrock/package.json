@@ -1,0 +1,32 @@
+{
+  "name": "bedrock-messages-test",
+  "version": "0.0.0-dev",
+  "description": "Bedrock messages test module",
+  "main": "./test",
+  "scripts": {
+    "test": "node test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/digitalbazaar/bedrock-messages"
+  },
+  "keywords": [
+    "bedrock",
+    "messages"
+  ],
+  "author": {
+    "name": "Digital Bazaar, Inc.",
+    "email": "support@digitalbazaar.com",
+    "url": "http://digitalbazaar.com"
+  },
+  "bugs": {
+    "url": "https://github.com/digitalbazaar/bedrock-messages/issues"
+  },
+  "homepage": "https://github.com/digitalbazaar/bedrock-messages",
+  "dependencies": {
+    "bedrock": "^1.0.0"
+  },
+  "directories": {
+    "lib": "./lib"
+  }
+}
