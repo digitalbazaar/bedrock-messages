@@ -4,7 +4,7 @@
   "description": "Bedrock messages module",
   "main": "./lib/messages",
   "scripts": {
-    "test": "node bedrock/test.js"
+    "test": "node bedrock/test.js test"
   },
   "repository": {
     "type": "git",
@@ -24,11 +24,18 @@
   },
   "homepage": "https://github.com/digitalbazaar/bedrock-messages",
   "dependencies": {
-    "async": "^1.4.2",
-    "bedrock-mongodb": "^1.0.0"
+    "async": "^1.5.1",
+    "lodash": "^3.10.1",
+    "node-uuid": "^1.4.7",
+    "request": "^2.67.0"
   },
   "peerDependencies": {
-    "bedrock": "^1.0.0"
+    "bedrock": "^1.0.0",
+    "bedrock-express": "^1.3.0",    
+    "bedrock-mongodb": "^1.0.0",
+    "bedrock-passport": "digitalbazaar/bedrock-passport#2.x",
+    "bedrock-permission": "^1.0.0",
+    "bedrock-validation": "^1.0.0"
   },
   "directories": {
     "lib": "./lib"
