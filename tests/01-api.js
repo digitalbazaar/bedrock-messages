@@ -16,6 +16,7 @@ var helpers = require('./helpers');
 var uuid = require('node-uuid').v4;
 
 var store = database.collections.messages;
+var storeInvalid = database.collections.invalidMessages;
 
 var referenceMessage = {
   recipient: '',
@@ -74,6 +75,8 @@ describe('bedrock-messages API requests', function() {
           event.type.should.equal('created');
           should.exist(event.date);
           event.date.should.be.a('number');
+          should.exist(event.batch);
+          event.batch.should.be.a('string');
           callback();
         }]
       }, done);
@@ -85,14 +88,15 @@ describe('bedrock-messages API requests', function() {
         recipient: recipient
       };
       async.auto({
-        insert: function(callback) {
+        store: function(callback) {
           async.times(numberOfMessages, function(n, next) {
-            brMessages.store(helpers.createMessage({recipient: recipient}), next);
+            brMessages.store(
+              helpers.createMessage({recipient: recipient}), next);
           }, function(err) {
             callback();
           });
         },
-        query: ['insert', function(callback) {
+        query: ['store', function(callback) {
           store.find(query, {}).toArray(callback);
         }],
         test: ['query', function(callback, results) {
@@ -104,17 +108,28 @@ describe('bedrock-messages API requests', function() {
         }]
       }, done);
     });
-    it('error if message format is not valid', function(done) {
-      var recipient = 'WillBDeleted';
-      var message = helpers.createMessage({recipient: recipient});
+    it('invalid message is stored in invalidMessage table', function(done) {
+      var holder = uuid();
+      var message = helpers.createMessage({holder: holder});
       // delete the recipient property
       delete message.recipient;
-      brMessages.store(message, function(err) {
-        should.exist(err);
-        err.name.should.equal('ValidationError');
-        err.errors[0].property.should.equal('recipient');
-        done();
-      });
+      var query = {
+        'message.content.holder': holder
+      };
+      async.auto({
+        store: function(callback) {
+          brMessages.store(message, callback);
+        },
+        query: ['store', function(callback) {
+          storeInvalid.find(query, {}).toArray(callback);
+        }],
+        test: ['query', function(callback, results) {
+          should.exist(results.query);
+          results.query.should.be.an('array');
+          results.query.should.have.length(1);
+          callback();
+        }]
+      }, done);
     });
   });
 
