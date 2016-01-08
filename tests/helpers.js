@@ -109,7 +109,8 @@ api.prepareDatabase = function(mockData, callback) {
 };
 
 api.removeCollections = function(callback) {
-  var collectionNames = ['messages', 'identity', 'publicKey'];
+  var collectionNames =
+    ['messages', 'invalidMessages', 'identity', 'publicKey'];
   database.openCollections(collectionNames, function(err) {
     async.each(collectionNames, function(collectionName, callback) {
       database.collections[collectionName].remove({}, callback);

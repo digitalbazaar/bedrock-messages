@@ -81,7 +81,7 @@ describe('bedrock-messages API requests', function() {
         }]
       }, done);
     });
-    it('store seven messages', function(done) {
+    it('store seven messages using single operations', function(done) {
       var recipient = uuid();
       var numberOfMessages = 7;
       var query = {
@@ -108,7 +108,35 @@ describe('bedrock-messages API requests', function() {
         }]
       }, done);
     });
-    it('invalid message is stored in invalidMessage table', function(done) {
+    it('store seven valid messages as an array', function(done) {
+      var recipient = uuid();
+      var numberOfMessages = 7;
+      var testMessages = [];
+      for(var i = 0; i < numberOfMessages; i++) {
+        testMessages.push(helpers.createMessage({recipient: recipient}));
+      }
+      var query = {
+        recipient: recipient
+      };
+      async.auto({
+        store: function(callback) {
+          brMessages.store(testMessages, callback);
+        },
+        query: ['store', function(callback, results) {
+          // check store results
+          results.store.valid.should.equal(7);
+          store.find(query, {}).toArray(callback);
+        }],
+        test: ['query', function(callback, results) {
+          should.exist(results.query);
+          var r = results.query;
+          r.should.be.an('array');
+          r.should.have.length(numberOfMessages);
+          callback();
+        }]
+      }, done);
+    });
+    it('one invalid message is stored in invalidMessage table', function(done) {
       var holder = uuid();
       var message = helpers.createMessage({holder: holder});
       // delete the recipient property
@@ -127,6 +155,121 @@ describe('bedrock-messages API requests', function() {
           should.exist(results.query);
           results.query.should.be.an('array');
           results.query.should.have.length(1);
+          callback();
+        }]
+      }, done);
+    });
+    it('seven invalid message stored individually in invalidMessage collection',
+      function(done) {
+      var holder = uuid();
+      var numberOfMessages = 7;
+      var message = helpers.createMessage({holder: holder});
+      var query = {
+        'message.content.holder': holder
+      };
+      async.auto({
+        store: function(callback) {
+          async.times(numberOfMessages, function(n, next) {
+            var message = helpers.createMessage({holder: holder});
+            delete message.recipient;
+            brMessages.store(message, next);
+          }, function(err) {
+            callback();
+          });
+        },
+        query: ['store', function(callback) {
+          storeInvalid.find(query, {}).toArray(callback);
+        }],
+        test: ['query', function(callback, results) {
+          should.exist(results.query);
+          results.query.should.be.an('array');
+          results.query.should.have.length(7);
+          callback();
+        }]
+      }, done);
+    });
+    it('store seven invalid messages as an array', function(done) {
+      var holder = uuid();
+      var numberOfMessages = 7;
+      var testMessages = [];
+      for(var i = 0; i < numberOfMessages; i++) {
+        var message = helpers.createMessage({holder: holder});
+        delete message.recipient;
+        testMessages.push(message);
+      }
+      var query = {
+        'message.content.holder': holder
+      };
+      async.auto({
+        store: function(callback) {
+          brMessages.store(testMessages, callback);
+        },
+        queryValid: ['store', function(callback, results) {
+          // check store results
+          results.store.valid.should.equal(0);
+          store.find(query, {}).toArray(callback);
+        }],
+        queryInvalid: ['store', function(callback, results) {
+          results.store.invalid.should.equal(7);
+          var invalidQuery = {
+            'meta.events.batch': results.store.batch
+          };
+          storeInvalid.find(invalidQuery).toArray(callback);
+        }],
+        test: ['queryValid', 'queryInvalid', function(callback, results) {
+          should.exist(results.queryValid);
+          var validResults = results.queryValid;
+          validResults.should.be.an('array');
+          validResults.should.have.length(0);
+          var invalidResults = results.queryInvalid;
+          invalidResults.should.be.an('array');
+          invalidResults.should.have.length(7);
+          callback();
+        }]
+      }, done);
+    });
+    it('store a mix of valid and invalid messages', function(done) {
+      var numberOfValidMessages = 7;
+      var numberOfInvalidMessages = 3;
+      var testMessages = [];
+      var i = 0;
+      var message = null;
+      for(i = 0; i < numberOfInvalidMessages; i++) {
+        message = helpers.createMessage();
+        delete message.recipient;
+        testMessages.push(message);
+      }
+      for(i = 0; i < numberOfValidMessages; i++) {
+        message = helpers.createMessage();
+        testMessages.push(message);
+      }
+      async.auto({
+        store: function(callback) {
+          brMessages.store(testMessages, callback);
+        },
+        queryValid: ['store', function(callback, results) {
+          // check store results
+          var validQuery = {
+            'meta.events.batch': results.store.batch
+          };
+          results.store.valid.should.equal(numberOfValidMessages);
+          store.find(validQuery, {}).toArray(callback);
+        }],
+        queryInvalid: ['store', function(callback, results) {
+          results.store.invalid.should.equal(numberOfInvalidMessages);
+          var invalidQuery = {
+            'meta.events.batch': results.store.batch
+          };
+          storeInvalid.find(invalidQuery).toArray(callback);
+        }],
+        test: ['queryValid', 'queryInvalid', function(callback, results) {
+          should.exist(results.queryValid);
+          var validResults = results.queryValid;
+          validResults.should.be.an('array');
+          validResults.should.have.length(numberOfValidMessages);
+          var invalidResults = results.queryInvalid;
+          invalidResults.should.be.an('array');
+          invalidResults.should.have.length(numberOfInvalidMessages);
           callback();
         }]
       }, done);
