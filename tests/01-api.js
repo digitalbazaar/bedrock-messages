@@ -19,12 +19,16 @@ var store = database.collections.messages;
 var storeInvalid = database.collections.invalidMessages;
 
 var referenceMessage = {
+  _id: '',
+  '@context': '',
+  meta: '',
   recipient: '',
+  sender: '',
+  type: '',
   content: {
     date: '',
     holder: '',
     link: '',
-    sender: ''
   }
 };
 
@@ -50,13 +54,17 @@ describe('bedrock-messages API requests', function() {
           r.should.have.length(1);
           r[0].should.be.an('object');
           var message = r[0];
+          should.exist(message['@context']);
+          message['@context'].should.be.a('string');
           should.exist(message.recipient);
           message.recipient.should.be.a('string');
+          should.exist(message.sender);
+          message.sender.should.be.a('string');
+          should.exist(message.type);
+          message.type.should.be.a('string');
           // check content
           should.exist(message.content);
           message.content.should.be.an('object');
-          should.exist(message.content.sender);
-          message.content.sender.should.be.a('string');
           should.exist(message.content.holder);
           message.content.holder.should.be.a('string');
           should.exist(message.content.link);
@@ -288,35 +296,37 @@ describe('bedrock-messages API requests', function() {
         recipient: recipient,
         sender: sender,
       });
-      async.series([
-        function(callback) {
+      async.auto({
+        store: function(callback) {
           brMessages.store(message, callback);
         },
-        function(callback) {
-          brMessages._get(recipient, function(err, results) {
-            should.not.exist(err);
-            should.exist(results);
-            results.should.be.an('array');
-            results.should.have.length(1);
-            var message = results[0];
-            message.should.be.an('object');
-            should.exist(message.recipient);
-            message.recipient.should.be.a('string');
-            message.recipient.should.equal(recipient);
-            should.exist(message.content);
-            // check content
-            message.content.should.be.an('object');
-            var content = message.content;
-            should.exist(content.sender);
-            content.sender.should.be.a('string');
-            content.sender.should.equal(sender);
-            should.exist(content.holder);
-            content.holder.should.be.a('string');
-            content.holder.should.equal(holder);
-            callback(err);
-          });
-        }
-      ], done);
+        query: ['store', function(callback) {
+          brMessages._get(recipient, callback);
+        }],
+        test: ['query', function(callback, results) {
+          should.exist(results.query);
+          results.query.should.be.an('array');
+          results.query.should.have.length(1);
+          var message = results.query[0];
+          message.should.be.an('object');
+          should.exist(message.recipient);
+          message.recipient.should.be.a('string');
+          message.recipient.should.equal(recipient);
+          should.exist(message.sender);
+          message.sender.should.be.a('string');
+          message.sender.should.equal(sender);
+          should.exist(message.type);
+          message.type.should.be.a('string');
+          should.exist(message.content);
+          // check content
+          message.content.should.be.an('object');
+          var content = message.content;
+          should.exist(content.holder);
+          content.holder.should.be.a('string');
+          content.holder.should.equal(holder);
+          callback();
+        }]
+      }, done);
     });
     it('message should not contain any unwanted properties', function(done) {
       var recipient = uuid();
@@ -399,13 +409,15 @@ describe('bedrock-messages API requests', function() {
             should.exist(message.recipient);
             message.recipient.should.be.a('string');
             message.recipient.should.equal(recipient);
+            should.exist(message.sender);
+            message.sender.should.be.a('string');
+            message.sender.should.equal(sender);
+            should.exist(message.type);
+            message.type.should.be.a('string');
             should.exist(message.content);
             // check content
             message.content.should.be.an('object');
             var content = message.content;
-            should.exist(content.sender);
-            content.sender.should.be.a('string');
-            content.sender.should.equal(sender);
             should.exist(content.holder);
             content.holder.should.be.a('string');
             content.holder.should.equal(holder);

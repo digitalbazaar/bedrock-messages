@@ -29,11 +29,12 @@ api.createMessage = function(options) {
   var message = {
     '@context': 'https://example.com/messages',
     recipient: testMessage.recipient,
+    sender: testMessage.sender,
+    type: 'CredentialNotification',
     content: {
       date: testMessage.date,
       holder: testMessage.holder,
-      link: testMessage.link,
-      sender: testMessage.sender
+      link: testMessage.link
     }
   };
   return message;

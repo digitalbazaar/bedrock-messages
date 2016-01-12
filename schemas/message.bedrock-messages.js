@@ -10,13 +10,14 @@ var schema = {
   properties: {
     '@context': {type: 'string', required: true},
     recipient: {type: 'string', required: true},
+    sender: {type: 'string', required: true},
+    type: {type: 'string', required: true},
     content: {
       required: true,
       properties: {
-        link: {type: 'string', required: true},
+        date: schemas.w3cDateTime({required: true}),
         holder: {type: 'string', required: true},
-        sender: {type: 'string', required: true},
-        date: schemas.w3cDateTime({required: true})
+        link: {type: 'string', required: true}
       }
     }
   }
