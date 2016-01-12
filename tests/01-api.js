@@ -34,11 +34,11 @@ var referenceMessage = {
 
 describe('bedrock-messages API requests', function() {
   describe('store function', function() {
-    it('store a message into mongodb', function(done) {
+    it.only('store a message into mongodb', function(done) {
       var recipient = uuid();
       var message = helpers.createMessage({recipient: recipient});
       var query = {
-        recipient: recipient
+        'value.recipient': recipient
       };
       async.auto({
         store: function(callback) {
