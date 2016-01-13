@@ -20,6 +20,7 @@ var storeInvalid = database.collections.invalidMessages;
 
 var referenceMessage = {
   _id: '',
+  id: '',
   '@context': '',
   meta: '',
   recipient: '',
@@ -34,7 +35,7 @@ var referenceMessage = {
 
 describe('bedrock-messages API requests', function() {
   describe('store function', function() {
-    it.only('store a message into mongodb', function(done) {
+    it('store a message into mongodb', function(done) {
       var recipient = uuid();
       var message = helpers.createMessage({recipient: recipient});
       var query = {
@@ -53,7 +54,11 @@ describe('bedrock-messages API requests', function() {
           r.should.be.an('array');
           r.should.have.length(1);
           r[0].should.be.an('object');
-          var message = r[0];
+          should.exist(r[0].id);
+          r[0].id.should.be.a('string');
+          should.exist(r[0].value);
+          r[0].value.should.be.an('object');
+          var message = r[0].value;
           should.exist(message['@context']);
           message['@context'].should.be.a('string');
           should.exist(message.recipient);
@@ -93,7 +98,7 @@ describe('bedrock-messages API requests', function() {
       var recipient = uuid();
       var numberOfMessages = 7;
       var query = {
-        recipient: recipient
+        'value.recipient': recipient
       };
       async.auto({
         store: function(callback) {
@@ -124,7 +129,7 @@ describe('bedrock-messages API requests', function() {
         testMessages.push(helpers.createMessage({recipient: recipient}));
       }
       var query = {
-        recipient: recipient
+        'value.recipient': recipient
       };
       async.auto({
         store: function(callback) {
@@ -150,7 +155,7 @@ describe('bedrock-messages API requests', function() {
       // delete the recipient property
       delete message.recipient;
       var query = {
-        'message.content.holder': holder
+        'value.message.content.holder': holder
       };
       async.auto({
         store: function(callback) {
@@ -173,7 +178,7 @@ describe('bedrock-messages API requests', function() {
       var numberOfMessages = 7;
       var message = helpers.createMessage({holder: holder});
       var query = {
-        'message.content.holder': holder
+        'value.message.content.holder': holder
       };
       async.auto({
         store: function(callback) {
@@ -206,7 +211,7 @@ describe('bedrock-messages API requests', function() {
         testMessages.push(message);
       }
       var query = {
-        'message.content.holder': holder
+        'value.message.content.holder': holder
       };
       async.auto({
         store: function(callback) {
@@ -220,7 +225,7 @@ describe('bedrock-messages API requests', function() {
         queryInvalid: ['store', function(callback, results) {
           results.store.invalid.should.equal(7);
           var invalidQuery = {
-            'meta.events.batch': results.store.batch
+            'value.meta.events.batch': results.store.batch
           };
           storeInvalid.find(invalidQuery).toArray(callback);
         }],
@@ -258,7 +263,7 @@ describe('bedrock-messages API requests', function() {
         queryValid: ['store', function(callback, results) {
           // check store results
           var validQuery = {
-            'meta.events.batch': results.store.batch
+            'value.meta.events.batch': results.store.batch
           };
           results.store.valid.should.equal(numberOfValidMessages);
           store.find(validQuery, {}).toArray(callback);
@@ -266,7 +271,7 @@ describe('bedrock-messages API requests', function() {
         queryInvalid: ['store', function(callback, results) {
           results.store.invalid.should.equal(numberOfInvalidMessages);
           var invalidQuery = {
-            'meta.events.batch': results.store.batch
+            'value.meta.events.batch': results.store.batch
           };
           storeInvalid.find(invalidQuery).toArray(callback);
         }],
@@ -307,8 +312,12 @@ describe('bedrock-messages API requests', function() {
           should.exist(results.query);
           results.query.should.be.an('array');
           results.query.should.have.length(1);
+          results.query[0].should.be.an('object');
           var message = results.query[0];
-          message.should.be.an('object');
+          should.exist(message.id);
+          message.id.should.be.a('string');
+          should.exist(message['@context']);
+          message['@context'].should.be.a('string');
           should.exist(message.recipient);
           message.recipient.should.be.a('string');
           message.recipient.should.equal(recipient);
@@ -324,6 +333,8 @@ describe('bedrock-messages API requests', function() {
           should.exist(content.holder);
           content.holder.should.be.a('string');
           content.holder.should.equal(holder);
+          should.exist(message.meta);
+          message.meta.should.be.an('object');
           callback();
         }]
       }, done);
@@ -357,7 +368,7 @@ describe('bedrock-messages API requests', function() {
       var recipient = uuid();
       var numberOfMessages = 7;
       var query = {
-        recipient: recipient
+        'value.recipient': recipient
       };
       async.auto({
         insert: function(callback) {
@@ -454,7 +465,7 @@ describe('bedrock-messages API requests', function() {
     it('getNew adds a delivered event', function(done) {
       var recipient = uuid();
       var query = {
-        recipient: recipient
+        'value.recipient': recipient
       };
       var message = helpers.createMessage({recipient: recipient});
       async.auto({
@@ -473,7 +484,7 @@ describe('bedrock-messages API requests', function() {
         test: ['query', function(callback, results) {
           should.exist(results.query);
           results.query.should.have.length(1);
-          var r = results.query[0];
+          var r = results.query[0].value;
           r.meta.events.should.have.length(2);
           var events = r.meta.events;
           events[0].type.should.equal('created');
@@ -510,7 +521,7 @@ describe('bedrock-messages API requests', function() {
       var recipient = uuid();
       var numberOfMessages = 7;
       var query = {
-        recipient: recipient
+        'value.recipient': recipient
       };
       async.auto({
         insert: function(callback) {
