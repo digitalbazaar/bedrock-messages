@@ -39,7 +39,7 @@ describe('bedrock-messages API requests', function() {
       var recipient = uuid();
       var message = helpers.createMessage({recipient: recipient});
       var query = {
-        'value.recipient': recipient
+        recipient: database.hash(recipient)
       };
       async.auto({
         store: function(callback) {
@@ -98,7 +98,7 @@ describe('bedrock-messages API requests', function() {
       var recipient = uuid();
       var numberOfMessages = 7;
       var query = {
-        'value.recipient': recipient
+        recipient: database.hash(recipient)
       };
       async.auto({
         store: function(callback) {
@@ -129,7 +129,7 @@ describe('bedrock-messages API requests', function() {
         testMessages.push(helpers.createMessage({recipient: recipient}));
       }
       var query = {
-        'value.recipient': recipient
+        recipient: database.hash(recipient)
       };
       async.auto({
         store: function(callback) {
@@ -368,7 +368,7 @@ describe('bedrock-messages API requests', function() {
       var recipient = uuid();
       var numberOfMessages = 7;
       var query = {
-        'value.recipient': recipient
+        recipient: database.hash(recipient)
       };
       async.auto({
         insert: function(callback) {
@@ -465,7 +465,7 @@ describe('bedrock-messages API requests', function() {
     it('getNew adds a delivered event', function(done) {
       var recipient = uuid();
       var query = {
-        'value.recipient': recipient
+        recipient: database.hash(recipient)
       };
       var message = helpers.createMessage({recipient: recipient});
       async.auto({
@@ -521,7 +521,7 @@ describe('bedrock-messages API requests', function() {
       var recipient = uuid();
       var numberOfMessages = 7;
       var query = {
-        'value.recipient': recipient
+        recipient: database.hash(recipient)
       };
       async.auto({
         insert: function(callback) {
