@@ -9,13 +9,15 @@ var schema = {
   title: 'Event',
   properties: {
     '@context': {type: 'string', required: true},
+    date: schemas.w3cDateTime({required: true}),
     recipient: {type: 'string', required: true},
     sender: {type: 'string', required: true},
+    subject: {type: 'string', required: true},
     type: {type: 'string', required: true},
     content: {
       required: true,
       properties: {
-        date: schemas.w3cDateTime({required: true}),
+        body: {type: 'string', required: true},
         holder: {type: 'string', required: true},
         link: {type: 'string', required: true}
       }

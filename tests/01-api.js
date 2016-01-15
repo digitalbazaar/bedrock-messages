@@ -22,12 +22,14 @@ var referenceMessage = {
   _id: '',
   id: '',
   '@context': '',
+  date: '',
   meta: '',
   recipient: '',
   sender: '',
+  subject: '',
   type: '',
   content: {
-    date: '',
+    body: '',
     holder: '',
     link: '',
   }
