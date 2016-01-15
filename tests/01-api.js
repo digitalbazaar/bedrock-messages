@@ -22,12 +22,14 @@ var referenceMessage = {
   _id: '',
   id: '',
   '@context': '',
+  date: '',
   meta: '',
   recipient: '',
   sender: '',
+  subject: '',
   type: '',
   content: {
-    date: '',
+    body: '',
     holder: '',
     link: '',
   }
@@ -61,15 +63,21 @@ describe('bedrock-messages API requests', function() {
           var message = r[0].value;
           should.exist(message['@context']);
           message['@context'].should.be.a('string');
+          should.exist(message.date);
+          message.date.should.be.a('string');
           should.exist(message.recipient);
           message.recipient.should.be.a('string');
           should.exist(message.sender);
           message.sender.should.be.a('string');
+          should.exist(message.subject);
+          message.subject.should.be.a('string');
           should.exist(message.type);
           message.type.should.be.a('string');
           // check content
           should.exist(message.content);
           message.content.should.be.an('object');
+          should.exist(message.content.body);
+          message.content.body.should.be.a('string');
           should.exist(message.content.holder);
           message.content.holder.should.be.a('string');
           should.exist(message.content.link);
@@ -291,15 +299,21 @@ describe('bedrock-messages API requests', function() {
 
   describe('get function', function() {
     it('retrieve one NEW messages by recipient', function(done) {
+      var body = uuid();
+      var holder = uuid();
+      var link = uuid();
       var recipient = uuid();
       var sender = uuid();
-      var link = uuid();
-      var holder = uuid();
+      var subject = uuid();
+      var type = uuid();
       var message = helpers.createMessage({
+        body: body,
         holder: holder,
         link: link,
         recipient: recipient,
         sender: sender,
+        subject: subject,
+        type: type
       });
       async.auto({
         store: function(callback) {
@@ -318,18 +332,27 @@ describe('bedrock-messages API requests', function() {
           message.id.should.be.a('string');
           should.exist(message['@context']);
           message['@context'].should.be.a('string');
+          should.exist(message.date);
+          message.date.should.be.a('string');
           should.exist(message.recipient);
           message.recipient.should.be.a('string');
           message.recipient.should.equal(recipient);
           should.exist(message.sender);
           message.sender.should.be.a('string');
           message.sender.should.equal(sender);
+          should.exist(message.subject);
+          message.subject.should.be.a('string');
+          message.subject.should.equal(subject);
           should.exist(message.type);
           message.type.should.be.a('string');
+          message.type.should.equal(type);
           should.exist(message.content);
           // check content
           message.content.should.be.an('object');
           var content = message.content;
+          should.exist(content.body);
+          content.body.should.be.a('string');
+          content.body.should.equal(body);
           should.exist(content.holder);
           content.holder.should.be.a('string');
           content.holder.should.equal(holder);
@@ -395,15 +418,21 @@ describe('bedrock-messages API requests', function() {
 
   describe('getNew Function', function() {
     it('retrieve one NEW messages by recipient', function(done) {
+      var body = uuid();
       var recipient = uuid();
       var sender = uuid();
       var link = uuid();
       var holder = uuid();
+      var subject = uuid();
+      var type = uuid();
       var message = helpers.createMessage({
+        body: body,
         holder: holder,
         link: link,
         recipient: recipient,
         sender: sender,
+        subject: subject,
+        type: type
       });
       async.series([
         function(callback) {
@@ -417,14 +446,22 @@ describe('bedrock-messages API requests', function() {
             results.should.have.length(1);
             var message = results[0];
             message.should.be.an('object');
+            should.exist(message['@context']);
+            message['@context'].should.be.a('string');
+            should.exist(message.date);
+            message.date.should.be.a('string');
             should.exist(message.recipient);
             message.recipient.should.be.a('string');
             message.recipient.should.equal(recipient);
             should.exist(message.sender);
             message.sender.should.be.a('string');
             message.sender.should.equal(sender);
+            should.exist(message.subject);
+            message.subject.should.be.a('string');
+            message.subject.should.equal(subject);
             should.exist(message.type);
             message.type.should.be.a('string');
+            message.type.should.equal(type);
             should.exist(message.content);
             // check content
             message.content.should.be.an('object');
@@ -432,6 +469,9 @@ describe('bedrock-messages API requests', function() {
             should.exist(content.holder);
             content.holder.should.be.a('string');
             content.holder.should.equal(holder);
+            should.exist(content.body);
+            content.body.should.be.a('string');
+            content.body.should.equal(body);
             callback(err);
           });
         }
