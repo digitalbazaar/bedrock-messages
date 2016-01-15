@@ -25,7 +25,8 @@ api.createMessage = function(options) {
     link: uuid(),
     recipient: uuid(),
     sender: uuid(),
-    subject: uuid()
+    subject: uuid(),
+    type: uuid()
   };
   _.assign(testMessage, options);
   var message = {
@@ -34,7 +35,7 @@ api.createMessage = function(options) {
     recipient: testMessage.recipient,
     sender: testMessage.sender,
     subject: testMessage.subject,
-    type: 'CredentialNotification',
+    type: testMessage.type,
     content: {
       body: testMessage.body,
       holder: testMessage.holder,
