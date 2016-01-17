@@ -12,12 +12,12 @@ var schema = {
     date: schemas.w3cDateTime({required: true}),
     recipient: {type: 'string', required: true},
     sender: {type: 'string', required: true},
-    subject: {type: 'string', required: true},
+    subject: {type: 'string', required: false},
     type: {type: 'string', required: true},
     content: {
       required: true,
       properties: {
-        body: {type: 'string', required: true},
+        body: {type: 'string', required: false},
         holder: {type: 'string', required: true},
         link: {type: 'string', required: true}
       }
