@@ -416,6 +416,281 @@ describe('bedrock-messages API requests', function() {
     });
   });
 
+  describe('update function', function() {
+    it('archive one message', function(done) {
+      var body = uuid();
+      var holder = uuid();
+      var link = uuid();
+      var recipient = uuid();
+      var sender = uuid();
+      var subject = uuid();
+      var type = uuid();
+      var message = helpers.createMessage({
+        body: body,
+        holder: holder,
+        link: link,
+        recipient: recipient,
+        sender: sender,
+        subject: subject,
+        type: type
+      });
+      var request = {
+        operation: 'archive',
+        message: message
+      };
+      async.auto({
+        store: function(callback) {
+          brMessages.store(message, callback);
+        },
+        query: ['store', function(callback) {
+          brMessages._update(request, callback);
+        }],
+        test: ['query', function(callback, results) {
+          should.exist(results.query);
+          should.exist(results.query.result);
+          should.exist(results.query.message);
+          should.exist(results.query.operation);
+          should.not.exist(results.query.error);
+
+          results.query.result.should.be.a('object');
+          results.query.message.should.be.a('object');
+          results.query.operation.should.be.a('string');
+
+          callback();
+        }]
+      }, done);
+    });
+    it('update with an unrecognized operation', function(done) {
+      var body = uuid();
+      var holder = uuid();
+      var link = uuid();
+      var recipient = uuid();
+      var sender = uuid();
+      var subject = uuid();
+      var type = uuid();
+      var message = helpers.createMessage({
+        body: body,
+        holder: holder,
+        link: link,
+        recipient: recipient,
+        sender: sender,
+        subject: subject,
+        type: type
+      });
+      var request = {
+        operation: 'foo',
+        message: message
+      };
+      async.series([
+        function(callback) {
+          brMessages.store(message, callback);
+        },
+        function(callback) {
+          brMessages._update(request, function(err, results) {
+            should.exist(err);
+            should.exist(results.error);
+            should.exist(results.result);
+            should.exist(results.message);
+            should.exist(results.operation);
+
+            err.details.httpStatusCode.should.equal(400);
+
+            results.error.should.be.a('object');
+            results.result.should.be.a('string');
+            results.message.should.be.a('object');
+            results.operation.should.be.a('string');
+
+            callback();
+          });
+        }
+      ], done);
+    });
+  });
+
+  describe('update batch function', function() {
+    it('archive two messages', function(done) {
+      var message1 = helpers.createMessage({
+        body: uuid(),
+        holder: uuid(),
+        link: uuid(),
+        recipient: uuid(),
+        sender: uuid(),
+        subject: uuid(),
+        type: uuid()
+      });
+      var message2 = helpers.createMessage({
+        body: uuid(),
+        holder: uuid(),
+        link: uuid(),
+        recipient: uuid(),
+        sender: uuid(),
+        subject: uuid(),
+        type: uuid()
+      });
+      var messages = [message1, message2];
+      var request = {
+        operation: 'archive',
+        messages: messages
+      };
+      async.auto({
+        store: function(callback) {
+          brMessages.store(messages, callback);
+        },
+        query: ['store', function(callback) {
+          brMessages._batchUpdate(request, callback);
+        }],
+        test: ['query', function(callback, results) {
+          should.exist(results.query);
+          should.exist(results.query.result);
+          should.exist(results.query.messages);
+          should.exist(results.query.operation);
+          should.not.exist(results.query.error);
+
+          results.query.result.should.be.a('object');
+          results.query.messages.should.be.a('array');
+          results.query.messages.should.have.length(2);
+          results.query.operation.should.be.a('string');
+
+          callback();
+        }]
+      }, done);
+    });
+    it('update batch with an unrecognized operation', function(done) {
+      var message1 = helpers.createMessage({
+        body: uuid(),
+        holder: uuid(),
+        link: uuid(),
+        recipient: uuid(),
+        sender: uuid(),
+        subject: uuid(),
+        type: uuid()
+      });
+      var message2 = helpers.createMessage({
+        body: uuid(),
+        holder: uuid(),
+        link: uuid(),
+        recipient: uuid(),
+        sender: uuid(),
+        subject: uuid(),
+        type: uuid()
+      });
+      var messages = [message1, message2];
+      var request = {
+        operation: 'foo',
+        messages: messages
+      };
+      async.series([
+        function(callback) {
+          brMessages.store(messages, callback);
+        },
+        function(callback) {
+          brMessages._batchUpdate(request, function(err, results) {
+            should.exist(err);
+            should.exist(results.error);
+            should.exist(results.result);
+            should.exist(results.messages);
+            should.exist(results.operation);
+
+            err.details.httpStatusCode.should.equal(400);
+
+            results.error.should.be.a('object');
+            results.result.should.be.a('string');
+            results.messages.should.be.a('array');
+            results.messages.should.have.length(2);
+            results.operation.should.be.a('string');
+
+            callback();
+          });
+        }
+      ], done);
+    });
+  });
+
+  describe('delete function', function() {
+    it('delete one message', function(done) {
+      var body = uuid();
+      var holder = uuid();
+      var link = uuid();
+      var recipient = uuid();
+      var sender = uuid();
+      var subject = uuid();
+      var type = uuid();
+      var message = helpers.createMessage({
+        body: body,
+        holder: holder,
+        link: link,
+        recipient: recipient,
+        sender: sender,
+        subject: subject,
+        type: type
+      });
+      async.auto({
+        store: function(callback) {
+          brMessages.store(message, callback);
+        },
+        query: ['store', function(callback) {
+          brMessages._delete(message.id, callback);
+        }],
+        test: ['query', function(callback, results) {
+          should.exist(results.query);
+          should.exist(results.query.result);
+          should.not.exist(results.query.error);
+
+          results.query.result.should.be.a('object');
+
+          callback();
+        }]
+      }, done);
+    });
+  });
+
+  describe('delete batch function', function() {
+    it('archive two messages', function(done) {
+      var message1 = helpers.createMessage({
+        body: uuid(),
+        holder: uuid(),
+        link: uuid(),
+        recipient: uuid(),
+        sender: uuid(),
+        subject: uuid(),
+        type: uuid()
+      });
+      var message2 = helpers.createMessage({
+        body: uuid(),
+        holder: uuid(),
+        link: uuid(),
+        recipient: uuid(),
+        sender: uuid(),
+        subject: uuid(),
+        type: uuid()
+      });
+      var messages = [message1, message2];
+      var request = {
+        messages: messages
+      };
+      async.auto({
+        store: function(callback) {
+          brMessages.store(messages, callback);
+        },
+        query: ['store', function(callback) {
+          brMessages._batchDelete(request, callback);
+        }],
+        test: ['query', function(callback, results) {
+          should.exist(results.query);
+          should.exist(results.query.result);
+          should.exist(results.query.messages);
+          should.not.exist(results.query.error);
+
+          results.query.result.should.be.a('object');
+          results.query.messages.should.be.a('array');
+          results.query.messages.should.have.length(2);
+
+          callback();
+        }]
+      }, done);
+    });
+  });
+
   describe('getNew Function', function() {
     it('retrieve one NEW messages by recipient', function(done) {
       var body = uuid();
