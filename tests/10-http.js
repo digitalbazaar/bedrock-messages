@@ -117,22 +117,26 @@ describe('bedrock-messages HTTP API', function() {
         }]
       }, done);
     });
-    it('return error if URL does not match authenticated user', function(done) {
+    it('does not allow access to another user\'s messages',
+      function(done) {
       var user = mockData.identities.rsa4096;
       var badUserId = 'did:' + uuid();
       request.post(
         helpers.createHttpSigRequest(
           messagesSearchEndpoint + '/' + badUserId + '/new', user),
         function(err, res, body) {
-        should.not.exist(err);
-        res.statusCode.should.equal(409);
-        should.exist(body);
-        body.should.be.an('object');
-        should.exist(body.type);
-        body.type.should.be.a('string');
-        body.type.should.equal('AuthenticationMismatch');
-        done();
-      });
+          should.not.exist(err);
+          res.statusCode.should.equal(403);
+          should.exist(body);
+          body.should.be.an('object');
+          should.exist(body.type);
+          body.type.should.be.a('string');
+          body.type.should.equal('PermissionDenied');
+          should.exist(body.details.sysPermission);
+          body.details.sysPermission.should.be.a('string');
+          body.details.sysPermission.should.equal('MESSAGE_ACCESS');
+          done();
+        });
     });
   });
 });
