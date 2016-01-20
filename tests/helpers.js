@@ -126,6 +126,17 @@ api.removeCollections = function(callback) {
   });
 };
 
+api.removeCollection = function(collection, callback) {
+  var collectionNames = [collection];
+  database.openCollections(collectionNames, function(err) {
+    async.each(collectionNames, function(collectionName, callback) {
+      database.collections[collectionName].remove({}, callback);
+    }, function(err) {
+      callback(err);
+    });
+  });
+};
+
 // Insert identities and public keys used for testing into database
 function insertTestData(mockData, callback) {
   async.forEachOf(mockData.identities, function(identity, key, callback) {

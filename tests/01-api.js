@@ -9,10 +9,12 @@
 var _ = require('lodash');
 var async = require('async');
 var bedrock = require('bedrock');
+var brIdentity = require('bedrock-identity');
 var brMessages = require('../lib/messages');
 var config = bedrock.config;
 var database = require('bedrock-mongodb');
 var helpers = require('./helpers');
+var mockData = require('./mock.data');
 var uuid = require('node-uuid').v4;
 
 var store = database.collections.messages;
@@ -297,12 +299,21 @@ describe('bedrock-messages API requests', function() {
     });
   });
 
-  describe('get function', function() {
+  describe.only('get function', function() {
+    before(function(done) {
+      helpers.prepareDatabase(mockData, done);
+    });
+    after(function(done) {
+      helpers.removeCollections(done);
+    });
+    afterEach(function(done) {
+      helpers.removeCollection('messages', done);
+    });
     it('retrieve one NEW messages by recipient', function(done) {
       var body = uuid();
       var holder = uuid();
       var link = uuid();
-      var recipient = uuid();
+      var recipient = mockData.identities.rsa4096.identity.id;
       var sender = uuid();
       var subject = uuid();
       var type = uuid();
@@ -316,11 +327,15 @@ describe('bedrock-messages API requests', function() {
         type: type
       });
       async.auto({
+        getIdentity: function(callback) {
+          brIdentity.get(
+            null, mockData.identities.rsa4096.identity.id, callback);
+        },
         store: function(callback) {
           brMessages.store(message, callback);
         },
-        query: ['store', function(callback) {
-          brMessages._get(recipient, callback);
+        query: ['store', 'getIdentity', function(callback, results) {
+          brMessages._get(results.getIdentity[0], recipient, callback);
         }],
         test: ['query', function(callback, results) {
           should.exist(results.query);
@@ -363,14 +378,19 @@ describe('bedrock-messages API requests', function() {
       }, done);
     });
     it('message should not contain any unwanted properties', function(done) {
-      var recipient = uuid();
-      async.series([
-        function(callback) {
+      var recipient = mockData.identities.rsa4096.identity.id;
+      async.auto({
+        store: function(callback) {
           brMessages.store(
             helpers.createMessage({recipient: recipient}), callback);
         },
-        function(callback) {
-          brMessages._get(recipient, function(err, results) {
+        getIdentity: function(callback) {
+          brIdentity.get(
+            null, mockData.identities.rsa4096.identity.id, callback);
+        },
+        test: ['store', 'getIdentity', function(callback, results) {
+          brMessages._get(
+            results.getIdentity[0], recipient, function(err, results) {
             should.not.exist(err);
             var message = results[0];
             message.should.be.an('object');
@@ -384,10 +404,39 @@ describe('bedrock-messages API requests', function() {
               .should.have.length(0);
             callback(err);
           });
-        }
-      ], done);
+        }]
+      }, done);
     });
     it('get seven new messages', function(done) {
+      var recipient = mockData.identities.rsa4096.identity.id;
+      var numberOfMessages = 7;
+      var query = {
+        recipient: database.hash(recipient)
+      };
+      async.auto({
+        insert: function(callback) {
+          async.times(numberOfMessages, function(n, next) {
+            brMessages.store(
+              helpers.createMessage({recipient: recipient}), next);
+          }, callback);
+        },
+        getIdentity: function(callback) {
+          brIdentity.get(
+            null, mockData.identities.rsa4096.identity.id, callback);
+        },
+        get: ['insert', 'getIdentity', function(callback, results) {
+          brMessages._get(results.getIdentity[0], recipient, callback);
+        }],
+        test: ['get', function(callback, results) {
+          should.exist(results.get);
+          var r = results.get;
+          r.should.be.an('array');
+          r.should.have.length(numberOfMessages);
+          callback();
+        }]
+      }, done);
+    });
+    it('should not allow access to another users messages', function(done) {
       var recipient = uuid();
       var numberOfMessages = 7;
       var query = {
@@ -398,19 +447,25 @@ describe('bedrock-messages API requests', function() {
           async.times(numberOfMessages, function(n, next) {
             brMessages.store(
               helpers.createMessage({recipient: recipient}), next);
-          }, function(err) {
+          }, callback);
+        },
+        getIdentity: function(callback) {
+          brIdentity.get(
+            null, mockData.identities.rsa4096.identity.id, callback);
+        },
+        get: ['insert', 'getIdentity', function(callback, results) {
+          brMessages._get(
+            results.getIdentity[0], recipient, function(err, result) {
+            should.exist(err);
+            err.should.be.an('object');
+            err.name.should.be.a('string');
+            err.name.should.equal('PermissionDenied');
+            should.exist(err.details);
+            err.details.should.be.an('object');
+            err.details.sysPermission.should.be.a('string');
+            err.details.sysPermission.should.equal('MESSAGE_ACCESS');
             callback();
           });
-        },
-        get: ['insert', function(callback) {
-          brMessages._get(recipient, callback);
-        }],
-        test: ['get', function(callback, results) {
-          should.exist(results.get);
-          var r = results.get;
-          r.should.be.an('array');
-          r.should.have.length(numberOfMessages);
-          callback();
         }]
       }, done);
     });
