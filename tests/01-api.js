@@ -814,6 +814,48 @@ describe('bedrock-messages API requests', function() {
         }]
       }, done);
     });
+    it('returns error on  mixed results', function(done) {
+      var recipient = mockData.identities.rsa4096.identity.id;
+      var message1 = helpers.createMessage({
+        recipient: recipient
+      });
+      var message2 = helpers.createMessage({
+        recipient: recipient
+      });
+      var messages = [message1, message2];
+      async.auto({
+        store: function(callback) {
+          brMessages.store(messages, callback);
+        },
+        getIdentity: function(callback) {
+          brIdentity.get(null, recipient, callback);
+        },
+        getIds: ['store', 'getIdentity', function(callback, results) {
+          // need the ids for the messages that have been stored
+          brMessages._get(results.getIdentity[0], recipient, callback);
+        }],
+        act: ['getIds', function(callback, results) {
+          var messageIds = results.getIds.map(function(message) {
+            return message.id;
+          });
+          // replace one of the message ids with an invalid id
+          messageIds[1] = 'invalidMessageId1234';
+          var request = {
+            operation: 'archive',
+            messages: messageIds
+          };
+          brMessages._batchDelete(
+            results.getIdentity[0], request, {recipient: recipient},
+            function(err, result) {
+              should.exist(err);
+              err.name.should.equal('BatchDeleteFailure');
+              should.exist(err.details.mongoResult.result.n);
+              err.details.mongoResult.result.n.should.equal(1);
+              callback();
+            });
+        }]
+      }, done);
+    });
   });
 
   describe('getNew Function', function() {
