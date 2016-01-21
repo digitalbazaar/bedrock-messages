@@ -472,6 +472,9 @@ describe('bedrock-messages API requests', function() {
   });
 
   describe('update function', function() {
+    afterEach(function(done) {
+      helpers.removeCollection('messages', done);
+    });
     it('archive one message', function(done) {
       var body = uuid();
       var holder = uuid();
@@ -547,14 +550,11 @@ describe('bedrock-messages API requests', function() {
             should.exist(results.result);
             should.exist(results.message);
             should.exist(results.operation);
-
             err.details.httpStatusCode.should.equal(400);
-
             results.error.should.be.a('object');
             results.result.should.be.a('string');
             results.message.should.be.a('object');
             results.operation.should.be.a('string');
-
             callback();
           });
         }
@@ -563,184 +563,180 @@ describe('bedrock-messages API requests', function() {
   });
 
   describe('update batch function', function() {
+    afterEach(function(done) {
+      helpers.removeCollection('messages', done);
+    });
     it('archive two messages', function(done) {
+      var recipient = mockData.identities.rsa4096.identity.id;
       var message1 = helpers.createMessage({
-        body: uuid(),
-        holder: uuid(),
-        link: uuid(),
-        recipient: uuid(),
-        sender: uuid(),
-        subject: uuid(),
-        type: uuid()
+        recipient: recipient
       });
       var message2 = helpers.createMessage({
-        body: uuid(),
-        holder: uuid(),
-        link: uuid(),
-        recipient: uuid(),
-        sender: uuid(),
-        subject: uuid(),
-        type: uuid()
+        recipient: recipient
       });
       var messages = [message1, message2];
-      var request = {
-        operation: 'archive',
-        messages: messages
-      };
       async.auto({
         store: function(callback) {
           brMessages.store(messages, callback);
         },
-        query: ['store', function(callback) {
-          brMessages._batchUpdate(request, callback);
+        getIdentity: function(callback) {
+          brIdentity.get(null, recipient, callback);
+        },
+        getIds: ['store', 'getIdentity', function(callback, results) {
+          // need the ids for the messages that have been stored
+          brMessages._get(results.getIdentity[0], recipient, callback);
         }],
-        test: ['query', function(callback, results) {
-          should.exist(results.query);
-          should.exist(results.query.result);
-          should.exist(results.query.messages);
-          should.exist(results.query.operation);
-          should.not.exist(results.query.error);
-
-          results.query.result.should.be.a('object');
-          results.query.messages.should.be.a('array');
-          results.query.messages.should.have.length(2);
-          results.query.operation.should.be.a('string');
-
+        act: ['getIds', function(callback, results) {
+          var messageIds = results.getIds.map(function(message) {
+            return message.id;
+          });
+          var request = {
+            operation: 'archive',
+            messages: messageIds
+          };
+          brMessages._batchUpdate(
+            results.getIdentity[0], request, {recipient: recipient}, callback);
+        }],
+        test: ['act', function(callback, results) {
+          // FIXME: query the database and make sure the two messages are
+          // marked as archived
+          should.exist(results.act);
+          should.exist(results.act.result);
+          should.exist(results.act.messages);
+          should.exist(results.act.operation);
+          should.not.exist(results.act.error);
+          results.act.result.should.be.a('object');
+          results.act.messages.should.be.a('array');
+          results.act.messages.should.have.length(2);
+          results.act.operation.should.be.a('string');
           callback();
         }]
       }, done);
     });
     it('update batch with an unrecognized operation', function(done) {
+      var recipient = mockData.identities.rsa4096.identity.id;
       var message1 = helpers.createMessage({
-        body: uuid(),
-        holder: uuid(),
-        link: uuid(),
-        recipient: uuid(),
-        sender: uuid(),
-        subject: uuid(),
-        type: uuid()
+        recipient: recipient
       });
       var message2 = helpers.createMessage({
-        body: uuid(),
-        holder: uuid(),
-        link: uuid(),
-        recipient: uuid(),
-        sender: uuid(),
-        subject: uuid(),
-        type: uuid()
+        recipient: recipient
       });
       var messages = [message1, message2];
-      var request = {
-        operation: 'foo',
-        messages: messages
-      };
-      async.series([
-        function(callback) {
+      async.auto({
+        store: function(callback) {
           brMessages.store(messages, callback);
         },
-        function(callback) {
-          brMessages._batchUpdate(request, function(err, results) {
+        getIdentity: function(callback) {
+          brIdentity.get(null, recipient, callback);
+        },
+        act: ['store', 'getIdentity', function(callback, results) {
+          var request = {
+            operation: 'foo',
+            messages: messages
+          };
+          brMessages._batchUpdate(
+            results.getIdentity[0], request, {recipient: recipient},
+            function(err, results) {
             should.exist(err);
-            should.exist(results.error);
-            should.exist(results.result);
-            should.exist(results.messages);
-            should.exist(results.operation);
-
+            should.exist(err.name);
+            err.name.should.be.a('string');
+            err.name.should.equal('MessageUpdateBatch');
             err.details.httpStatusCode.should.equal(400);
-
-            results.error.should.be.a('object');
-            results.result.should.be.a('string');
-            results.messages.should.be.a('array');
-            results.messages.should.have.length(2);
-            results.operation.should.be.a('string');
-
             callback();
           });
-        }
-      ], done);
+        }]
+      }, done);
     });
   });
 
   describe('delete function', function() {
+    afterEach(function(done) {
+      helpers.removeCollection('messages', done);
+    });
     it('delete one message', function(done) {
-      var body = uuid();
-      var holder = uuid();
-      var link = uuid();
-      var recipient = uuid();
-      var sender = uuid();
-      var subject = uuid();
-      var type = uuid();
+      var recipient = mockData.identities.rsa4096.identity.id;
       var message = helpers.createMessage({
-        body: body,
-        holder: holder,
-        link: link,
-        recipient: recipient,
-        sender: sender,
-        subject: subject,
-        type: type
+        recipient: recipient
       });
       async.auto({
         store: function(callback) {
           brMessages.store(message, callback);
         },
-        query: ['store', function(callback) {
-          brMessages._delete(message.id, callback);
+        getIdentity: function(callback) {
+          brIdentity.get(null, recipient, callback);
+        },
+        getId: ['store', 'getIdentity', function(callback, results) {
+          // need the ids for the messages that have been stored
+          brMessages._get(results.getIdentity[0], recipient, callback);
         }],
-        test: ['query', function(callback, results) {
-          should.exist(results.query);
-          should.exist(results.query.result);
-          should.not.exist(results.query.error);
-
-          results.query.result.should.be.a('object');
-
-          callback();
+        act: ['getId', function(callback, results) {
+          brMessages._deleteMessage(
+            results.getIdentity[0], results.getId[0].id, {recipient: recipient},
+            callback);
+        }],
+        test: ['act', function(callback, results) {
+          should.exist(results.act);
+          should.exist(results.act.result);
+          results.act.result.should.be.an('object');
+          brMessages._get(
+            results.getIdentity[0], recipient, function(err, result) {
+            should.not.exist(err);
+            should.exist(result);
+            result.should.be.an('array');
+            result.should.have.length(0);
+            callback();
+          });
         }]
       }, done);
     });
   });
 
   describe('delete batch function', function() {
-    it('archive two messages', function(done) {
+    afterEach(function(done) {
+      helpers.removeCollection('messages', done);
+    });
+    it('delete two messages', function(done) {
+      var recipient = mockData.identities.rsa4096.identity.id;
       var message1 = helpers.createMessage({
-        body: uuid(),
-        holder: uuid(),
-        link: uuid(),
-        recipient: uuid(),
-        sender: uuid(),
-        subject: uuid(),
-        type: uuid()
+        recipient: recipient
       });
       var message2 = helpers.createMessage({
-        body: uuid(),
-        holder: uuid(),
-        link: uuid(),
-        recipient: uuid(),
-        sender: uuid(),
-        subject: uuid(),
-        type: uuid()
+        recipient: recipient
       });
       var messages = [message1, message2];
-      var request = {
-        messages: messages
-      };
       async.auto({
         store: function(callback) {
           brMessages.store(messages, callback);
         },
-        query: ['store', function(callback) {
-          brMessages._batchDelete(request, callback);
+        getIdentity: function(callback) {
+          brIdentity.get(null, recipient, callback);
+        },
+        getIds: ['store', 'getIdentity', function(callback, results) {
+          // need the ids for the messages that have been stored
+          brMessages._get(results.getIdentity[0], recipient, callback);
         }],
-        test: ['query', function(callback, results) {
-          should.exist(results.query);
-          should.exist(results.query.result);
-          should.exist(results.query.messages);
-          should.not.exist(results.query.error);
-
-          results.query.result.should.be.a('object');
-          results.query.messages.should.be.a('array');
-          results.query.messages.should.have.length(2);
-
-          callback();
+        act: ['getIds', function(callback, results) {
+          var messageIds = results.getIds.map(function(message) {
+            return message.id;
+          });
+          var request = {
+            messages: messageIds
+          };
+          brMessages._batchDelete(
+            results.getIdentity[0], request, {recipient: recipient}, callback);
+        }],
+        test: ['act', function(callback, results) {
+          should.exist(results.act);
+          should.exist(results.act.result);
+          results.act.result.should.be.a('object');
+          brMessages._get(
+            results.getIdentity[0], recipient, function(err, result) {
+            should.not.exist(err);
+            should.exist(result);
+            result.should.be.an('array');
+            result.should.have.length(0);
+            callback();
+          });
         }]
       }, done);
     });
