@@ -476,89 +476,76 @@ describe('bedrock-messages API requests', function() {
       helpers.removeCollection('messages', done);
     });
     it('archive one message', function(done) {
-      var body = uuid();
-      var holder = uuid();
-      var link = uuid();
-      var recipient = uuid();
-      var sender = uuid();
-      var subject = uuid();
-      var type = uuid();
+      var recipient = mockData.identities.rsa4096.identity.id;
       var message = helpers.createMessage({
-        body: body,
-        holder: holder,
-        link: link,
-        recipient: recipient,
-        sender: sender,
-        subject: subject,
-        type: type
+        recipient: recipient
       });
-      var request = {
-        operation: 'archive',
-        message: message
-      };
       async.auto({
         store: function(callback) {
           brMessages.store(message, callback);
         },
-        query: ['store', function(callback) {
-          brMessages._update(request, callback);
+        getIdentity: function(callback) {
+          brIdentity.get(null, recipient, callback);
+        },
+        getId: ['store', 'getIdentity', function(callback, results) {
+          // need the ids for the messages that have been stored
+          brMessages._get(results.getIdentity[0], recipient, callback);
         }],
-        test: ['query', function(callback, results) {
-          should.exist(results.query);
-          should.exist(results.query.result);
-          should.exist(results.query.message);
-          should.exist(results.query.operation);
-          should.not.exist(results.query.error);
-
-          results.query.result.should.be.a('object');
-          results.query.message.should.be.a('object');
-          results.query.operation.should.be.a('string');
-
-          callback();
+        act: ['getId', function(callback, results) {
+          var request = {
+            operation: 'archive',
+            message: results.getId[0].id
+          };
+          brMessages._updateMessage(
+            results.getIdentity[0], request, {recipient: recipient}, callback);
+        }],
+        test: ['act', function(callback, results) {
+          should.exist(results.act);
+          should.exist(results.act.result);
+          results.act.result.nModified.should.equal(1);
+          results.act.result.should.be.an('object');
+          brMessages._get(
+            results.getIdentity[0], recipient, function(err, result) {
+            result[0].meta.events.should.be.an('array');
+            result[0].meta.events.should.have.length(2);
+            result[0].meta.events[0].type.should.equal('created');
+            result[0].meta.events[1].type.should.equal('archived');
+            result[0].meta.events[1].date.should.be.a('number');
+            callback();
+          });
         }]
       }, done);
     });
     it('update with an unrecognized operation', function(done) {
-      var body = uuid();
-      var holder = uuid();
-      var link = uuid();
-      var recipient = uuid();
-      var sender = uuid();
-      var subject = uuid();
-      var type = uuid();
+      var recipient = mockData.identities.rsa4096.identity.id;
       var message = helpers.createMessage({
-        body: body,
-        holder: holder,
-        link: link,
-        recipient: recipient,
-        sender: sender,
-        subject: subject,
-        type: type
+        recipient: recipient
       });
-      var request = {
-        operation: 'foo',
-        message: message
-      };
-      async.series([
-        function(callback) {
+      async.auto({
+        store: function(callback) {
           brMessages.store(message, callback);
         },
-        function(callback) {
-          brMessages._update(request, function(err, results) {
+        getIdentity: function(callback) {
+          brIdentity.get(null, recipient, callback);
+        },
+        getId: ['store', 'getIdentity', function(callback, results) {
+          // need the ids for the messages that have been stored
+          brMessages._get(results.getIdentity[0], recipient, callback);
+        }],
+        act: ['getId', function(callback, results) {
+          var request = {
+            operation: 'foo',
+            message: results.getId[0].id
+          };
+          brMessages._updateMessage(
+            results.getIdentity[0], request, {recipient: recipient},
+            function(err, results) {
             should.exist(err);
-            should.exist(results.error);
-            should.exist(results.result);
-            should.exist(results.message);
-            should.exist(results.operation);
-            err.details.httpStatusCode.should.equal(400);
-            results.error.should.be.a('object');
-            results.result.should.be.a('string');
-            results.message.should.be.a('object');
-            results.operation.should.be.a('string');
+            err.name.should.equal('MessageUpdate');
             callback();
           });
-        }
-      ], done);
+        }]
+      }, done);
     });
   });
 
