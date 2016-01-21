@@ -1062,32 +1062,80 @@ describe('bedrock-messages API requests', function() {
     it('get some messages', function(done) {
       var recipient = mockData.identities.rsa4096.identity.id;
       var numberOfMessages = 7;
-      var query = {
-        recipient: database.hash(recipient)
-      };
       async.auto({
         store: function(callback) {
           async.times(numberOfMessages, function(n, next) {
             brMessages.store(
               helpers.createMessage({recipient: recipient}), next);
           }, function(err, results) {
-            console.log('$$$$$$$$', err, results);
-            callback();
+            callback(err);
           });
         },
         getIdentity: function(callback) {
           brIdentity.get(
             null, recipient, callback);
         },
-        get: ['store', 'getIdentity', function(callback, results) {
-          brMessages._getNew(results.getIdentity[0], recipient, callback);
+        getIds: ['store', 'getIdentity', function(callback, results) {
+          // need the ids for the messages that have been stored
+          brMessages._get(results.getIdentity[0], recipient, callback);
         }],
-        test: ['get', function(callback, results) {
-          should.exist(results.get);
-          var r = results.get;
-          r.should.be.an('array');
-          r.should.have.length(numberOfMessages);
+        act: ['getIds', function(callback, results) {
+          // pull out 3 ids for testing
+          var testMessages = [];
+          testMessages.push(
+            results.getIds[1].id, results.getIds[3].id, results.getIds[6].id);
+          // testSubjects.push
+          brMessages.getMessages(
+            results.getIdentity[0], testMessages, {recipient: recipient},
+            callback);
+        }],
+        test: ['act', function(callback, results) {
+          results.act.should.be.an('array');
+          results.act.should.have.length(3);
+          should.exist(_.find(results.act, results.getIds[1]));
+          should.exist(_.find(results.act, results.getIds[3]));
+          should.exist(_.find(results.act, results.getIds[6]));
           callback();
+        }]
+      }, done);
+    });
+    it('returns an error if all messages were not found', function(done) {
+      var recipient = mockData.identities.rsa4096.identity.id;
+      var numberOfMessages = 7;
+      async.auto({
+        store: function(callback) {
+          async.times(numberOfMessages, function(n, next) {
+            brMessages.store(
+              helpers.createMessage({recipient: recipient}), next);
+          }, function(err, results) {
+            callback(err);
+          });
+        },
+        getIdentity: function(callback) {
+          brIdentity.get(
+            null, recipient, callback);
+        },
+        getIds: ['store', 'getIdentity', function(callback, results) {
+          // need the ids for the messages that have been stored
+          brMessages._get(results.getIdentity[0], recipient, callback);
+        }],
+        act: ['getIds', function(callback, results) {
+          // pull out 2 good ids for testing and add an invalid id
+          var testMessages = [];
+          testMessages.push(
+            results.getIds[1].id, results.getIds[3].id, 'invalidMessageId1234');
+          brMessages.getMessages(
+            results.getIdentity[0], testMessages, {recipient: recipient},
+            function(err, result) {
+              should.exist(err);
+              err.name.should.equal('GetMessagesFailure');
+              should.exist(err.details.mongoResult);
+              err.details.mongoResult.should.be.an('array');
+              err.details.mongoResult.should.have.length(2);
+              should.exist(_.find(err.details.mongoResult, results.getIds[1]));
+              should.exist(_.find(err.details.mongoResult, results.getIds[3]));
+              callback();
+            });
         }]
       }, done);
     });
