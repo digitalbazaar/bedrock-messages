@@ -1055,4 +1055,41 @@ describe('bedrock-messages API requests', function() {
       }, done);
     });
   });
+  describe('getMessages function', function() {
+    afterEach(function(done) {
+      helpers.removeCollection('messages', done);
+    });
+    it('get some messages', function(done) {
+      var recipient = mockData.identities.rsa4096.identity.id;
+      var numberOfMessages = 7;
+      var query = {
+        recipient: database.hash(recipient)
+      };
+      async.auto({
+        store: function(callback) {
+          async.times(numberOfMessages, function(n, next) {
+            brMessages.store(
+              helpers.createMessage({recipient: recipient}), next);
+          }, function(err, results) {
+            console.log('$$$$$$$$', err, results);
+            callback();
+          });
+        },
+        getIdentity: function(callback) {
+          brIdentity.get(
+            null, recipient, callback);
+        },
+        get: ['store', 'getIdentity', function(callback, results) {
+          brMessages._getNew(results.getIdentity[0], recipient, callback);
+        }],
+        test: ['get', function(callback, results) {
+          should.exist(results.get);
+          var r = results.get;
+          r.should.be.an('array');
+          r.should.have.length(numberOfMessages);
+          callback();
+        }]
+      }, done);
+    });
+  });
 });
