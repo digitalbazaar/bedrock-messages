@@ -506,11 +506,13 @@ describe('bedrock-messages API requests', function() {
           results.act.result.should.be.an('object');
           brMessages._get(
             results.getIdentity[0], recipient, function(err, result) {
+            should.exist(result[0].meta.events);
             result[0].meta.events.should.be.an('array');
-            result[0].meta.events.should.have.length(2);
-            result[0].meta.events[0].type.should.equal('created');
-            result[0].meta.events[1].type.should.equal('archived');
-            result[0].meta.events[1].date.should.be.a('number');
+            var events = result[0].meta.events;
+            events.should.have.length(2);
+            events[0].type.should.equal('created');
+            events[1].type.should.equal('archived');
+            events[1].date.should.be.a('number');
             callback();
           });
         }]
