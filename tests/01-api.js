@@ -436,7 +436,7 @@ describe('bedrock-messages API requests', function() {
         }]
       }, done);
     });
-    it('should not allow access to another users messages', function(done) {
+    it('should not allow access to another user\`s messages', function(done) {
       var recipient = uuid();
       var numberOfMessages = 7;
       var query = {
@@ -518,6 +518,45 @@ describe('bedrock-messages API requests', function() {
         }]
       }, done);
     });
+    it('does not allow updates to another user\'s message', function(done) {
+      var testIdentity = mockData.identities.rsa4096.identity.id;
+      var recipient = uuid();
+      var message = helpers.createMessage({
+        recipient: recipient
+      });
+      async.auto({
+        store: function(callback) {
+          brMessages.store(message, callback);
+        },
+        getIdentity: function(callback) {
+          brIdentity.get(null, testIdentity, callback);
+        },
+        getId: ['store', 'getIdentity', function(callback, results) {
+          // need the ids for the messages that have been stored
+          brMessages._get(null, recipient, callback);
+        }],
+        act: ['getId', function(callback, results) {
+          var request = {
+            operation: 'archive',
+            message: results.getId[0].id
+          };
+          brMessages._updateMessage(
+            results.getIdentity[0], request, {recipient: recipient},
+            function(err, result) {
+            should.exist(err);
+            err.should.be.an('object');
+            err.name.should.be.a('string');
+            err.name.should.equal('PermissionDenied');
+            should.exist(err.details);
+            err.details.should.be.an('object');
+            err.details.sysPermission.should.be.a('string');
+            err.details.sysPermission.should.equal('MESSAGE_ACCESS');
+            callback();
+          });
+        }]
+      }, done);
+    });
+
     it('update with an unrecognized operation', function(done) {
       var recipient = mockData.identities.rsa4096.identity.id;
       var message = helpers.createMessage({
@@ -587,22 +626,68 @@ describe('bedrock-messages API requests', function() {
             results.getIdentity[0], request, {recipient: recipient}, callback);
         }],
         test: ['act', function(callback, results) {
-          // FIXME: query the database and make sure the two messages are
-          // marked as archived
-          should.exist(results.act);
-          should.exist(results.act.result);
-          should.exist(results.act.messages);
-          should.exist(results.act.operation);
-          should.not.exist(results.act.error);
-          results.act.result.should.be.a('object');
-          results.act.messages.should.be.a('array');
-          results.act.messages.should.have.length(2);
-          results.act.operation.should.be.a('string');
-          callback();
+          should.exist(results.act.result.nModified);
+          results.act.result.nModified.should.equal(2);
+          brMessages._get(
+            results.getIdentity[0], recipient, function(err, result) {
+            should.exist(result[0].meta.archived);
+            result[0].meta.archived.should.be.true;
+            should.exist(result[0].meta.events[1]);
+            result[0].meta.events[1].type.should.equal('archived');
+            result[0].meta.events[1].date.should.be.a('number');
+            should.exist(result[1].meta.archived);
+            result[1].meta.archived.should.be.true;
+            should.exist(result[1].meta.events[1]);
+            result[1].meta.events[1].type.should.equal('archived');
+            result[1].meta.events[1].date.should.be.a('number');
+            callback();
+          });
         }]
       }, done);
     });
-    it('update batch with an unrecognized operation', function(done) {
+    it('returns error on  mixed results', function(done) {
+      var recipient = mockData.identities.rsa4096.identity.id;
+      var message1 = helpers.createMessage({
+        recipient: recipient
+      });
+      var message2 = helpers.createMessage({
+        recipient: recipient
+      });
+      var messages = [message1, message2];
+      async.auto({
+        store: function(callback) {
+          brMessages.store(messages, callback);
+        },
+        getIdentity: function(callback) {
+          brIdentity.get(null, recipient, callback);
+        },
+        getIds: ['store', 'getIdentity', function(callback, results) {
+          // need the ids for the messages that have been stored
+          brMessages._get(results.getIdentity[0], recipient, callback);
+        }],
+        act: ['getIds', function(callback, results) {
+          var messageIds = results.getIds.map(function(message) {
+            return message.id;
+          });
+          // replace one of the message ids with an invalid id
+          messageIds[1] = 'invalidMessageId1234';
+          var request = {
+            operation: 'archive',
+            messages: messageIds
+          };
+          brMessages._batchUpdate(
+            results.getIdentity[0], request, {recipient: recipient},
+            function(err, result) {
+              should.exist(err);
+              err.name.should.equal('BatchUpdateFailure');
+              should.exist(err.details.mongoResult.result.nModified);
+              err.details.mongoResult.result.nModified.should.equal(1);
+              callback();
+            });
+        }]
+      }, done);
+    });
+    it('returns error on an unrecognized operation', function(done) {
       var recipient = mockData.identities.rsa4096.identity.id;
       var message1 = helpers.createMessage({
         recipient: recipient
