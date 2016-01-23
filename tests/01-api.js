@@ -328,8 +328,7 @@ describe('bedrock-messages API requests', function() {
       });
       async.auto({
         getIdentity: function(callback) {
-          brIdentity.get(
-            null, mockData.identities.rsa4096.identity.id, callback);
+          brIdentity.get(null, recipient, callback);
         },
         store: function(callback) {
           brMessages.store(message, callback);
@@ -884,8 +883,7 @@ describe('bedrock-messages API requests', function() {
           brMessages.store(message, callback);
         },
         getIdentity: function(callback) {
-          brIdentity.get(
-            null, recipient, callback);
+          brIdentity.get(null, recipient, callback);
         },
         test: ['store', 'getIdentity', function(callback, results) {
           brMessages._getNew(
@@ -935,8 +933,7 @@ describe('bedrock-messages API requests', function() {
             helpers.createMessage({recipient: recipient}), callback);
         },
         getIdentity: function(callback) {
-          brIdentity.get(
-            null, recipient, callback);
+          brIdentity.get(null, recipient, callback);
         },
         test: ['store', 'getIdentity', function(callback, results) {
           brMessages._getNew(
@@ -968,8 +965,7 @@ describe('bedrock-messages API requests', function() {
           brMessages.store(message, callback);
         },
         getIdentity: function(callback) {
-          brIdentity.get(
-            null, recipient, callback);
+          brIdentity.get(null, recipient, callback);
         },
         get: ['store', 'getIdentity', function(callback, results) {
           brMessages._getNew(
@@ -1001,8 +997,7 @@ describe('bedrock-messages API requests', function() {
           brMessages.store(message, callback);
         },
         getIdentity: function(callback) {
-          brIdentity.get(
-            null, recipient, callback);
+          brIdentity.get(null, recipient, callback);
         },
         getFirst: ['store', 'getIdentity', function(callback, results) {
           brMessages._getNew(
@@ -1039,8 +1034,7 @@ describe('bedrock-messages API requests', function() {
           });
         },
         getIdentity: function(callback) {
-          brIdentity.get(
-            null, recipient, callback);
+          brIdentity.get(null, recipient, callback);
         },
         get: ['store', 'getIdentity', function(callback, results) {
           brMessages._getNew(results.getIdentity[0], recipient, callback);
@@ -1072,8 +1066,7 @@ describe('bedrock-messages API requests', function() {
           });
         },
         getIdentity: function(callback) {
-          brIdentity.get(
-            null, recipient, callback);
+          brIdentity.get(null, recipient, callback);
         },
         getIds: ['store', 'getIdentity', function(callback, results) {
           // need the ids for the messages that have been stored
@@ -1112,8 +1105,7 @@ describe('bedrock-messages API requests', function() {
           });
         },
         getIdentity: function(callback) {
-          brIdentity.get(
-            null, recipient, callback);
+          brIdentity.get(null, recipient, callback);
         },
         getIds: ['store', 'getIdentity', function(callback, results) {
           // need the ids for the messages that have been stored
