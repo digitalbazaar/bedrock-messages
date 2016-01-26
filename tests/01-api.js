@@ -41,9 +41,9 @@ describe('bedrock-messages API requests', function() {
   before(function(done) {
     helpers.prepareDatabase(mockData, done);
   });
-  after(function(done) {
-    helpers.removeCollections(done);
-  });
+  // after(function(done) {
+  //   helpers.removeCollections(done);
+  // });
   describe('store function', function() {
     it('store a message into mongodb', function(done) {
       var recipient = uuid();
@@ -163,6 +163,35 @@ describe('bedrock-messages API requests', function() {
           r.should.have.length(numberOfMessages);
           callback();
         }]
+      }, done);
+    });
+    it.only(
+      'store seven valid messages as an array w/random recipients',
+      function(done) {
+      var numberOfMessages = 7;
+      var testMessages = [];
+      for(var i = 0; i < numberOfMessages; i++) {
+        testMessages.push(helpers.createMessage());
+      }
+      // var query = {
+      //   recipient: database.hash(recipient)
+      // };
+      async.auto({
+        store: function(callback) {
+          brMessages.store(testMessages, callback);
+        },
+        // query: ['store', function(callback, results) {
+        //   // check store results
+        //   results.store.valid.should.equal(7);
+        //   store.find(query, {}).toArray(callback);
+        // }],
+        // test: ['query', function(callback, results) {
+        //   should.exist(results.query);
+        //   var r = results.query;
+        //   r.should.be.an('array');
+        //   r.should.have.length(numberOfMessages);
+        //   callback();
+        // }]
       }, done);
     });
     it('one invalid message is stored in invalidMessage table', function(done) {
