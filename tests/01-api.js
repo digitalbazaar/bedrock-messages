@@ -333,7 +333,7 @@ describe('bedrock-messages API requests', function() {
 
   describe('get function', function() {
     afterEach(function(done) {
-      helpers.removeCollection('messages', done);
+      helpers.removeCollections({collections: ['messages']}, done);
     });
     it('retrieve one NEW messages by recipient', function(done) {
       var body = uuid();
@@ -498,7 +498,7 @@ describe('bedrock-messages API requests', function() {
 
   describe('update function', function() {
     afterEach(function(done) {
-      helpers.removeCollection('messages', done);
+      helpers.removeCollections({collections: ['messages']}, done);
     });
     it('archive one message', function(done) {
       var recipient = mockData.identities.rsa4096.identity.id;
@@ -617,7 +617,7 @@ describe('bedrock-messages API requests', function() {
 
   describe('update batch function', function() {
     afterEach(function(done) {
-      helpers.removeCollection('messages', done);
+      helpers.removeCollections({collections: ['messages']}, done);
     });
     it('archive two messages', function(done) {
       var recipient = mockData.identities.rsa4096.identity.id;
@@ -750,7 +750,7 @@ describe('bedrock-messages API requests', function() {
 
   describe('delete function', function() {
     afterEach(function(done) {
-      helpers.removeCollection('messages', done);
+      helpers.removeCollections({collections: ['messages']}, done);
     });
     it('delete one message', function(done) {
       var recipient = mockData.identities.rsa4096.identity.id;
@@ -792,7 +792,7 @@ describe('bedrock-messages API requests', function() {
 
   describe('delete batch function', function() {
     afterEach(function(done) {
-      helpers.removeCollection('messages', done);
+      helpers.removeCollections({collections: ['messages']}, done);
     });
     it('delete two messages', function(done) {
       var recipient = mockData.identities.rsa4096.identity.id;
@@ -885,7 +885,7 @@ describe('bedrock-messages API requests', function() {
 
   describe('getNew Function', function() {
     afterEach(function(done) {
-      helpers.removeCollection('messages', done);
+      helpers.removeCollections({collections: ['messages']}, done);
     });
     it('retrieve one NEW messages by recipient', function(done) {
       var body = uuid();
@@ -1077,7 +1077,7 @@ describe('bedrock-messages API requests', function() {
   });
   describe('getMessages function', function() {
     afterEach(function(done) {
-      helpers.removeCollection('messages', done);
+      helpers.removeCollections({collections: ['messages']}, done);
     });
     it('get some messages', function(done) {
       var recipient = mockData.identities.rsa4096.identity.id;
