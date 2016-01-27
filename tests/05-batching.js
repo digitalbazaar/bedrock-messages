@@ -27,20 +27,20 @@ describe('bedrock-messages message batching functions', function() {
   after(function(done) {
     helpers.removeCollections(done);
   });
-  describe('batchMessage function', function() {
+  describe.only('batchMessage function', function() {
     afterEach(function(done) {
       helpers.removeCollections(
         {collections: ['messagesBatch', 'messages']}, done);
     });
     it('calls batchMessage', function(done) {
       var recipient = uuid();
+      var testMessage = helpers.createMessage({recipient: recipient});
       async.auto({
         store: function(callback) {
-          brMessages.store(
-            helpers.createMessage({recipient: recipient}), callback);
+          brMessages.store(testMessage, callback);
         },
         act: ['store', function(callback) {
-          brMessages._batchMessage(callback);
+          brMessages._batchMessage(0, testMessage, callback);
         }],
         messageQuery: ['act', function(callback) {
           store.findOne({}, callback);
@@ -63,4 +63,7 @@ describe('bedrock-messages message batching functions', function() {
       }, done);
     });
   }); // end batchMessage
+  describe('getUnbatchedMessage function', function() {
+
+  }); //
 });
