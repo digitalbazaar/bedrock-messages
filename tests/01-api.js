@@ -821,7 +821,7 @@ describe('bedrock-messages API requests', function() {
           var request = {
             messages: messageIds
           };
-          brMessages._batchDelete(
+          brMessages._bulkDelete(
             results.getIdentity[0], request, {recipient: recipient}, callback);
         }],
         test: ['act', function(callback, results) {
@@ -869,11 +869,11 @@ describe('bedrock-messages API requests', function() {
             operation: 'archive',
             messages: messageIds
           };
-          brMessages._batchDelete(
+          brMessages._bulkDelete(
             results.getIdentity[0], request, {recipient: recipient},
             function(err, result) {
               should.exist(err);
-              err.name.should.equal('BatchDeleteFailure');
+              err.name.should.equal('BulkDeleteFailure');
               should.exist(err.details.mongoResult.result.n);
               err.details.mongoResult.result.n.should.equal(1);
               callback();
