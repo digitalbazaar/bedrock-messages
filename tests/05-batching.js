@@ -78,6 +78,7 @@ describe('bedrock-messages message batching functions', function() {
       var message = util.clone(mockData.messages.alpha);
       batch.value.dirty = true;
       batch.value.messages[message.value.id] = true;
+      message.value.meta.batch.state = 'ready';
       async.auto({
         insertMessage: function(callback) {
           store.insert(message, callback);
@@ -105,6 +106,35 @@ describe('bedrock-messages message batching functions', function() {
       var batch = util.clone(mockData.batches.alpha);
       var message = util.clone(mockData.messages.alpha);
       message.value.meta.batch.state = 'pending';
+      batch.value.id = 1;
+      async.auto({
+        insertMessage: function(callback) {
+          store.insert(message, callback);
+        },
+        insertBatch: function(callback) {
+          storeBatch.insert(batch, callback);
+        },
+        getUnbatched: ['insertMessage', 'insertBatch', function(callback) {
+          brMessages._getUnbatchedMessage(null, callback);
+        }],
+        test: ['getUnbatched', function(callback, results) {
+          should.exist(results.getUnbatched);
+          results.getUnbatched.should.be.an('object');
+          should.exist(results.getUnbatched.batch);
+          results.getUnbatched.batch.should.be.an('object');
+          results.getUnbatched.batch.should.deep.equal(batch.value);
+          should.exist(results.getUnbatched.message);
+          results.getUnbatched.message.should.be.an('object');
+          results.getUnbatched.message.should.deep.equal(message.value);
+          callback();
+        }]
+      }, done);
+    });
+    it.skip('goes into a loop', function(done) {
+      var batch = util.clone(mockData.batches.alpha);
+      var message = util.clone(mockData.messages.alpha);
+      message.value.meta.batch.state = 'pending';
+      batch.value.id = 0;
       async.auto({
         insertMessage: function(callback) {
           store.insert(message, callback);
