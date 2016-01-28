@@ -15,6 +15,7 @@ var config = bedrock.config;
 var database = require('bedrock-mongodb');
 var helpers = require('./helpers');
 var mockData = require('./mock.data');
+var util = bedrock.util;
 var uuid = require('node-uuid').v4;
 
 var store = database.collections.messages;
@@ -27,7 +28,7 @@ describe('bedrock-messages message batching functions', function() {
   after(function(done) {
     helpers.removeCollections(done);
   });
-  describe.only('batchMessage function', function() {
+  describe('batchMessage function', function() {
     afterEach(function(done) {
       helpers.removeCollections(
         {collections: ['messagesBatch', 'messages']}, done);
@@ -63,7 +64,84 @@ describe('bedrock-messages message batching functions', function() {
       }, done);
     });
   }); // end batchMessage
-  describe('getUnbatchedMessage function', function() {
-
-  }); //
+  describe.only('getUnbatchedMessage function', function() {
+    afterEach(function(done) {
+      helpers.removeCollections(
+        {collections: ['messagesBatch', 'messages']}, done);
+    });
+    it('returns a dirty batch', function(done) {
+      var batch = util.clone(mockData.batches.alpha);
+      var message = util.clone(mockData.messages.alpha);
+      batch.value.dirty = true;
+      batch.value.messages[message.value.id] = true;
+      async.auto({
+        insertMessage: function(callback) {
+          store.insert(message, callback);
+        },
+        insertBatch: function(callback) {
+          storeBatch.insert(batch, callback);
+        },
+        getUnbatched: ['insertMessage', 'insertBatch', function(callback) {
+          brMessages._getUnbatchedMessage(null, callback);
+        }],
+        test: ['getUnbatched', function(callback, results) {
+          should.exist(results.getUnbatched);
+          results.getUnbatched.should.be.an('object');
+          should.exist(results.getUnbatched.batch);
+          results.getUnbatched.batch.should.be.an('object');
+          results.getUnbatched.batch.should.deep.equal(batch.value);
+          should.exist(results.getUnbatched.message);
+          results.getUnbatched.message.should.be.an('object');
+          results.getUnbatched.message.should.deep.equal(message.value);
+          callback();
+        }]
+      }, done);
+    });
+    it('returns a pending message', function(done) {
+      var batch = util.clone(mockData.batches.alpha);
+      var message = util.clone(mockData.messages.alpha);
+      message.value.meta.batch.state = 'pending';
+      async.auto({
+        insertMessage: function(callback) {
+          store.insert(message, callback);
+        },
+        insertBatch: function(callback) {
+          storeBatch.insert(batch, callback);
+        },
+        getUnbatched: ['insertMessage', 'insertBatch', function(callback) {
+          brMessages._getUnbatchedMessage(null, callback);
+        }],
+        test: ['getUnbatched', function(callback, results) {
+          should.exist(results.getUnbatched);
+          results.getUnbatched.should.be.an('object');
+          should.exist(results.getUnbatched.batch);
+          results.getUnbatched.batch.should.be.an('object');
+          results.getUnbatched.batch.should.deep.equal(batch.value);
+          should.exist(results.getUnbatched.message);
+          results.getUnbatched.message.should.be.an('object');
+          results.getUnbatched.message.should.deep.equal(message.value);
+          callback();
+        }]
+      }, done);
+    });
+    it('returns null if no dirty batch or pending messages', function(done) {
+      var batch = util.clone(mockData.batches.alpha);
+      var message = util.clone(mockData.messages.alpha);
+      async.auto({
+        insertMessage: function(callback) {
+          store.insert(message, callback);
+        },
+        insertBatch: function(callback) {
+          storeBatch.insert(batch, callback);
+        },
+        getUnbatched: ['insertMessage', 'insertBatch', function(callback) {
+          brMessages._getUnbatchedMessage(null, callback);
+        }],
+        test: ['getUnbatched', function(callback, results) {
+          should.not.exist(results.getUnbatched);
+          callback();
+        }]
+      }, done);
+    });
+  }); // end getUnbatchedMessage
 });
