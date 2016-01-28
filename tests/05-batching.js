@@ -21,7 +21,7 @@ var uuid = require('node-uuid').v4;
 var store = database.collections.messages;
 var storeBatch = database.collections.messagesBatch;
 
-describe('bedrock-messages message batching functions', function() {
+describe.only('bedrock-messages message batching functions', function() {
   before(function(done) {
     helpers.prepareDatabase(mockData, done);
   });
@@ -130,7 +130,7 @@ describe('bedrock-messages message batching functions', function() {
         }]
       }, done);
     });
-    it.skip('goes into a loop', function(done) {
+    it('goes into a loop', function(done) {
       var batch = util.clone(mockData.batches.alpha);
       var message = util.clone(mockData.messages.alpha);
       message.value.meta.batch.state = 'pending';
