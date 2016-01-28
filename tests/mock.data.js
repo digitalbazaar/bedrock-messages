@@ -110,7 +110,7 @@ data.messages.alpha = {
     "meta": {
       "batch": {
         "id": 0,
-        "state": "ready"
+        "state": "pending"
       },
       "events": [
         {

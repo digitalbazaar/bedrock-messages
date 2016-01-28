@@ -34,14 +34,18 @@ describe('bedrock-messages message batching functions', function() {
         {collections: ['messagesBatch', 'messages']}, done);
     });
     it('calls batchMessage', function(done) {
-      var recipient = uuid();
-      var testMessage = helpers.createMessage({recipient: recipient});
+      var testMessage = util.clone(mockData.messages.alpha);
+      var testBatch = util.clone(mockData.batches.alpha);
       async.auto({
-        store: function(callback) {
-          brMessages.store(testMessage, callback);
+        insertMessage: function(callback) {
+          store.insert(testMessage, callback);
         },
-        act: ['store', function(callback) {
-          brMessages._batchMessage(0, testMessage, callback);
+        insertBatch: function(callback) {
+          storeBatch.insert(testBatch, callback);
+        },
+        act: ['insertMessage', 'insertBatch', function(callback) {
+          brMessages._batchMessage(
+            testBatch.value, testMessage.value, callback);
         }],
         messageQuery: ['act', function(callback) {
           store.findOne({}, callback);
@@ -55,7 +59,7 @@ describe('bedrock-messages message batching functions', function() {
           message.meta.batch.state.should.equal('ready');
           var batch = results.batchQuery.value;
           batch.id.should.equal(0);
-          batch.recipient.should.equal(recipient);
+          batch.recipient.should.equal(message.recipient);
           should.exist(batch.messages);
           batch.messages.should.be.an('object');
           _.isEmpty(batch.messages).should.be.true;
@@ -64,7 +68,7 @@ describe('bedrock-messages message batching functions', function() {
       }, done);
     });
   }); // end batchMessage
-  describe.only('getUnbatchedMessage function', function() {
+  describe('getUnbatchedMessage function', function() {
     afterEach(function(done) {
       helpers.removeCollections(
         {collections: ['messagesBatch', 'messages']}, done);
@@ -127,6 +131,7 @@ describe('bedrock-messages message batching functions', function() {
     it('returns null if no dirty batch or pending messages', function(done) {
       var batch = util.clone(mockData.batches.alpha);
       var message = util.clone(mockData.messages.alpha);
+      message.value.meta.batch.state = 'ready';
       async.auto({
         insertMessage: function(callback) {
           store.insert(message, callback);
