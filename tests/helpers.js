@@ -57,6 +57,50 @@ api.createHttpSigRequest = function(url, identity) {
   return newRequest;
 };
 
+api.createHttpSigDelRequest = function(url, identity, messageBatch) {
+  var newRequest = {
+    url: url,
+    body: {messages: messageBatch},
+    httpSignature: {
+      key: identity.keys.privateKey.privateKeyPem,
+      keyId: identity.keys.publicKey.id,
+      headers: ['date', 'host', 'request-line']
+    }
+  };
+  return newRequest;
+};
+
+api.createHttpSigUpdateRequest = function(url, identity, messageId, op) {
+  var newRequest = {
+    url: url,
+    body: {
+      operation: op,
+      message: messageId
+    },
+    httpSignature: {
+      key: identity.keys.privateKey.privateKeyPem,
+      keyId: identity.keys.publicKey.id,
+      headers: ['date', 'host', 'request-line']
+    }
+  };
+  return newRequest;
+};
+api.createHttpSigUpdateBatchRequest = function(url, identity, messages, op) {
+  var newRequest = {
+    url: url,
+    body: {
+      operation: op,
+      messages: messages
+    },
+    httpSignature: {
+      key: identity.keys.privateKey.privateKeyPem,
+      keyId: identity.keys.publicKey.id,
+      headers: ['date', 'host', 'request-line']
+    }
+  };
+  return newRequest;
+};
+
 api.createIdentity = function(userName) {
   var newIdentity = {
     id: 'did:' + uuid.v4(),
