@@ -130,7 +130,7 @@ describe.only('bedrock-messages message batching functions', function() {
         }]
       }, done);
     });
-    it('goes into a loop', function(done) {
+    it('returns null', function(done) {
       var batch = util.clone(mockData.batches.alpha);
       var message = util.clone(mockData.messages.alpha);
       message.value.meta.batch.state = 'pending';
@@ -146,14 +146,7 @@ describe.only('bedrock-messages message batching functions', function() {
           brMessages._getUnbatchedMessage(null, callback);
         }],
         test: ['getUnbatched', function(callback, results) {
-          should.exist(results.getUnbatched);
-          results.getUnbatched.should.be.an('object');
-          should.exist(results.getUnbatched.batch);
-          results.getUnbatched.batch.should.be.an('object');
-          results.getUnbatched.batch.should.deep.equal(batch.value);
-          should.exist(results.getUnbatched.message);
-          results.getUnbatched.message.should.be.an('object');
-          results.getUnbatched.message.should.deep.equal(message.value);
+          should.not.exist(results.getUnbatched);
           callback();
         }]
       }, done);
