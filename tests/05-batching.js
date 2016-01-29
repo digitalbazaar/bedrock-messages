@@ -179,4 +179,29 @@ describe('bedrock-messages message batching functions', function() {
       }, done);
     });
   }); // end getUnbatchedMessage
+  describe.only('deliverBatch function', function() {
+    afterEach(function(done) {
+      helpers.removeCollections(
+        {collections: ['messagesBatch', 'messages']}, done);
+    });
+    it('should mark a batch with non-empty join map as dirty', function(done) {
+      var batch = util.clone(mockData.batches.alpha);
+      var message = util.clone(mockData.messages.alpha);
+      batch.value.messages[message.value.id] = true;
+      async.auto({
+        insertMessage: function(callback) {
+          store.insert(message, callback);
+        },
+        insertBatch: function(callback) {
+          storeBatch.insert(batch, callback);
+        },
+        deliverBatch: ['insertMessage', 'insertBatch', function(callback) {
+          brMessages._deliverBatch(callback);
+        }],
+        test: ['deliverBatch', function(callback, results) {
+          callback();
+        }]
+      }, done);
+    });
+  }); // end deliverBatch
 });
