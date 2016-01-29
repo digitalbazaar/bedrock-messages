@@ -179,15 +179,17 @@ describe('bedrock-messages message batching functions', function() {
       }, done);
     });
   }); // end getUnbatchedMessage
-  describe.only('deliverBatch function', function() {
+  describe('deliverBatch function', function() {
     afterEach(function(done) {
       helpers.removeCollections(
         {collections: ['messagesBatch', 'messages']}, done);
     });
-    it('should mark a batch with non-empty join map as dirty', function(done) {
+    it('return empty array if state is ready but message is in join map',
+      function(done) {
       var batch = util.clone(mockData.batches.alpha);
       var message = util.clone(mockData.messages.alpha);
       batch.value.messages[message.value.id] = true;
+      message.value.meta.batch.state = 'ready';
       async.auto({
         insertMessage: function(callback) {
           store.insert(message, callback);
@@ -195,10 +197,75 @@ describe('bedrock-messages message batching functions', function() {
         insertBatch: function(callback) {
           storeBatch.insert(batch, callback);
         },
-        deliverBatch: ['insertMessage', 'insertBatch', function(callback) {
-          brMessages._deliverBatch(callback);
+        closeBatch: ['insertMessage', 'insertBatch', function(callback) {
+          brMessages._closeBatch(batch.value.recipient, callback);
         }],
-        test: ['deliverBatch', function(callback, results) {
+        readBatch: ['closeBatch', function(callback) {
+          brMessages._readBatch(batch.value.recipient, callback);
+        }],
+        test: ['readBatch', function(callback, results) {
+          should.exist(results.readBatch);
+          results.readBatch.id.should.equal(1);
+          should.exist(results.closeBatch);
+          results.closeBatch.should.be.an('array');
+          results.closeBatch.should.have.length(0);
+          callback();
+        }]
+      }, done);
+    });
+    it('return message and increment batch if message is ready and not in the join map',
+      function(done) {
+      var batch = util.clone(mockData.batches.alpha);
+      var message = util.clone(mockData.messages.alpha);
+      // batch.value.messages[message.value.id] = true;
+      message.value.meta.batch.state = 'ready';
+      async.auto({
+        insertMessage: function(callback) {
+          store.insert(message, callback);
+        },
+        insertBatch: function(callback) {
+          storeBatch.insert(batch, callback);
+        },
+        closeBatch: ['insertMessage', 'insertBatch', function(callback) {
+          brMessages._closeBatch(batch.value.recipient, callback);
+        }],
+        readBatch: ['closeBatch', function(callback) {
+          brMessages._readBatch(batch.value.recipient, callback);
+        }],
+        test: ['readBatch', function(callback, results) {
+          should.exist(results.readBatch);
+          results.readBatch.id.should.equal(1);
+          should.exist(results.closeBatch);
+          results.closeBatch.should.be.an('array');
+          results.closeBatch.should.have.length(1);
+          callback();
+        }]
+      }, done);
+    });
+    it('increments the batch even if no message is returned', function(done) {
+      var batch = util.clone(mockData.batches.alpha);
+      // var message = util.clone(mockData.messages.alpha);
+      // batch.value.messages[message.value.id] = true;
+      // message.value.meta.batch.state = 'ready';
+      async.auto({
+        // insertMessage: function(callback) {
+        //   store.insert(message, callback);
+        // },
+        insertBatch: function(callback) {
+          storeBatch.insert(batch, callback);
+        },
+        closeBatch: ['insertBatch', function(callback) {
+          brMessages._closeBatch(batch.value.recipient, callback);
+        }],
+        readBatch: ['closeBatch', function(callback) {
+          brMessages._readBatch(batch.value.recipient, callback);
+        }],
+        test: ['readBatch', function(callback, results) {
+          should.exist(results.readBatch);
+          results.readBatch.id.should.equal(1);
+          should.exist(results.closeBatch);
+          results.closeBatch.should.be.an('array');
+          results.closeBatch.should.have.length(0);
           callback();
         }]
       }, done);
