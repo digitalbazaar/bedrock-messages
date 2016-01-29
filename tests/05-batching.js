@@ -205,10 +205,8 @@ describe('bedrock-messages message batching functions', function() {
         }],
         test: ['readBatch', function(callback, results) {
           should.exist(results.readBatch);
-          results.readBatch.id.should.equal(1);
-          should.exist(results.closeBatch);
-          results.closeBatch.should.be.an('array');
-          results.closeBatch.should.have.length(0);
+          results.readBatch.id.should.equal(0);
+          should.not.exist(results.closeBatch);
           callback();
         }]
       }, done);
@@ -236,13 +234,20 @@ describe('bedrock-messages message batching functions', function() {
           should.exist(results.readBatch);
           results.readBatch.id.should.equal(1);
           should.exist(results.closeBatch);
-          results.closeBatch.should.be.an('array');
-          results.closeBatch.should.have.length(1);
+          results.closeBatch.should.be.an('object');
+          should.exist(results.closeBatch.batch);
+          results.closeBatch.batch.should.equal(0);
+          should.exist(results.closeBatch.messages);
+          results.closeBatch.messages.should.be.an('array');
+          results.closeBatch.messages.should.have.length(1);
+          delete message.value.meta;
+          results.closeBatch.messages[0].value.should.deep.equal(message.value);
           callback();
         }]
       }, done);
     });
-    it('increments the batch even if no message is returned', function(done) {
+    it('does not increments the batch if no message is returned',
+      function(done) {
       var batch = util.clone(mockData.batches.alpha);
       // var message = util.clone(mockData.messages.alpha);
       // batch.value.messages[message.value.id] = true;
@@ -262,10 +267,8 @@ describe('bedrock-messages message batching functions', function() {
         }],
         test: ['readBatch', function(callback, results) {
           should.exist(results.readBatch);
-          results.readBatch.id.should.equal(1);
-          should.exist(results.closeBatch);
-          results.closeBatch.should.be.an('array');
-          results.closeBatch.should.have.length(0);
+          results.readBatch.id.should.equal(0);
+          should.not.exist(results.closeBatch);
           callback();
         }]
       }, done);
