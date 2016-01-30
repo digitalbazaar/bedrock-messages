@@ -96,7 +96,6 @@ describe('bedrock-messages message batching functions', function() {
           m.meta.batch.id.should.equal(0);
           m.meta.batch.state.should.equal('ready');
           var b = results.batchQuery.value;
-          console.log('%%%%%%%%%', b);
           b.id.should.equal(0);
           b.recipient.should.equal(message.value.recipient);
           should.exist(b.messages);
@@ -134,7 +133,6 @@ describe('bedrock-messages message batching functions', function() {
           m.meta.batch.id.should.equal(0);
           m.meta.batch.state.should.equal('ready');
           var b = results.batchQuery.value;
-          console.log('%%%%%%%%%', b);
           b.id.should.equal(0);
           b.recipient.should.equal(message.value.recipient);
           should.exist(b.messages);
@@ -311,8 +309,8 @@ describe('bedrock-messages message batching functions', function() {
           results.readBatch.id.should.equal(1);
           should.exist(results.closeBatch);
           results.closeBatch.should.be.an('object');
-          should.exist(results.closeBatch.batch);
-          results.closeBatch.batch.should.equal(0);
+          should.exist(results.closeBatch.id);
+          results.closeBatch.id.should.equal(0);
           should.exist(results.closeBatch.messages);
           results.closeBatch.messages.should.be.an('array');
           results.closeBatch.messages.should.have.length(1);
@@ -349,7 +347,7 @@ describe('bedrock-messages message batching functions', function() {
       helpers.removeCollections(
         {collections: ['messagesBatch', 'messages']}, done);
     });
-    it.only('does something great', function(done) {
+    it('does something great', function(done) {
       var batch = util.clone(mockData.batches.alpha);
       var message = util.clone(mockData.messages.alpha);
       batch.value.messages[message.value.id] = true;
@@ -368,10 +366,18 @@ describe('bedrock-messages message batching functions', function() {
         readBatch: ['cleanup', function(callback) {
           brMessages._readBatch(batch.value.recipient, callback);
         }],
-        test: ['readBatch', function(callback, results) {
+        readMessage: ['cleanup', function(callback) {
+          store.find({}).toArray(callback);
+        }],
+        test: ['readBatch', 'readMessage', function(callback, results) {
           should.exist(results.readBatch);
-          results.readBatch.id.should.equal(0);
-          console.log('$$$$$$$', results.readBatch);
+          var b = results.readBatch;
+          b.id.should.equal(0);
+          _.isEmpty(b.messages).should.be.true;
+          b.dirty.should.be.false;
+          // message should be returned to 'ready' state
+          var m = results.readMessage[0].value;
+          m.should.deep.equal(message.value);
           callback();
         }]
       }, done);
