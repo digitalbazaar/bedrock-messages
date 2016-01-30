@@ -33,7 +33,9 @@ describe('bedrock-messages message batching functions', function() {
       helpers.removeCollections(
         {collections: ['messagesBatch', 'messages']}, done);
     });
-    it.only('batches a message when message state is pending', function(done) {
+    it('batches a msg when msg state is pending and msg is not in map',
+      function(done) {
+      // state in the mock message is 'pending'
       var testMessage = util.clone(mockData.messages.alpha);
       var testBatch = util.clone(mockData.batches.alpha);
       async.auto({
@@ -67,7 +69,44 @@ describe('bedrock-messages message batching functions', function() {
         }]
       }, done);
     });
-    it.only('batches a msg when state is ready and msg is in join map',
+    it('batches a msg when state is pending and msg is in join map',
+      function(done) {
+      var message = util.clone(mockData.messages.alpha);
+      var batch = util.clone(mockData.batches.alpha);
+      batch.value.dirty = true;
+      batch.value.messages[message.value.id] = true;
+      async.auto({
+        insertMessage: function(callback) {
+          store.insert(message, callback);
+        },
+        insertBatch: function(callback) {
+          storeBatch.insert(batch, callback);
+        },
+        act: ['insertMessage', 'insertBatch', function(callback) {
+          brMessages._batchMessage(batch.value, message.value, callback);
+        }],
+        messageQuery: ['act', function(callback) {
+          store.findOne({}, callback);
+        }],
+        batchQuery: ['act', function(callback) {
+          storeBatch.findOne({}, callback);
+        }],
+        test: ['messageQuery', 'batchQuery', function(callback, results) {
+          var m = results.messageQuery.value;
+          m.meta.batch.id.should.equal(0);
+          m.meta.batch.state.should.equal('ready');
+          var b = results.batchQuery.value;
+          console.log('%%%%%%%%%', b);
+          b.id.should.equal(0);
+          b.recipient.should.equal(message.value.recipient);
+          should.exist(b.messages);
+          b.messages.should.be.an('object');
+          _.isEmpty(b.messages).should.be.true;
+          callback();
+        }]
+      }, done);
+    });
+    it('does nothing when msg state is ready and msg is in join map',
       function(done) {
       var message = util.clone(mockData.messages.alpha);
       var batch = util.clone(mockData.batches.alpha);
@@ -100,7 +139,7 @@ describe('bedrock-messages message batching functions', function() {
           b.recipient.should.equal(message.value.recipient);
           should.exist(b.messages);
           b.messages.should.be.an('object');
-          _.isEmpty(b.messages).should.be.true;
+          should.exist(b.messages[message.value.id]);
           callback();
         }]
       }, done);
@@ -310,7 +349,7 @@ describe('bedrock-messages message batching functions', function() {
       helpers.removeCollections(
         {collections: ['messagesBatch', 'messages']}, done);
     });
-    it('does something great', function(done) {
+    it.only('does something great', function(done) {
       var batch = util.clone(mockData.batches.alpha);
       var message = util.clone(mockData.messages.alpha);
       batch.value.messages[message.value.id] = true;
@@ -338,4 +377,44 @@ describe('bedrock-messages message batching functions', function() {
       }, done);
     });
   }); // end cleanupJob
+  describe('resetMessage function', function() {
+    afterEach(function(done) {
+      helpers.removeCollections(
+        {collections: ['messagesBatch', 'messages']}, done);
+    });
+    it('resets a message back to pending with new batch id', function(done) {
+      var batch = util.clone(mockData.batches.alpha);
+      var message = util.clone(mockData.messages.alpha);
+      message.value.meta.batch.state = 'ready';
+      batch.value.id = 1;
+      async.auto({
+        insertMessage: function(callback) {
+          store.insert(message, callback);
+        },
+        insertBatch: function(callback) {
+          storeBatch.insert(batch, callback);
+        },
+        act: ['insertMessage', 'insertBatch', function(callback) {
+          brMessages._resetMessage(batch.value, message.value, callback);
+        }],
+        testResults: ['act', function(callback, results) {
+          should.exist(results.act);
+          results.act.should.be.an('object');
+          should.exist(results.act.message);
+          results.act.message.should.deep.equal(message.value);
+          should.exist(results.act.batch);
+          results.act.batch.should.deep.equal(batch.value);
+          callback();
+        }],
+        findMessage: ['act', function(callback) {
+          store.find({id: message.id}).toArray(callback);
+        }],
+        testMessage: ['findMessage', function(callback, results) {
+          results.findMessage[0].value.meta.batch.state.should.equal('pending');
+          results.findMessage[0].value.meta.batch.id.should.equal(1);
+          callback();
+        }]
+      }, done);
+    });
+  }); // end resetMessage
 });
