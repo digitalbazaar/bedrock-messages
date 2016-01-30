@@ -33,7 +33,7 @@ describe('bedrock-messages message batching functions', function() {
       helpers.removeCollections(
         {collections: ['messagesBatch', 'messages']}, done);
     });
-    it('calls batchMessage', function(done) {
+    it.only('batches a message when message state is pending', function(done) {
       var testMessage = util.clone(mockData.messages.alpha);
       var testBatch = util.clone(mockData.batches.alpha);
       async.auto({
@@ -63,6 +63,44 @@ describe('bedrock-messages message batching functions', function() {
           should.exist(batch.messages);
           batch.messages.should.be.an('object');
           _.isEmpty(batch.messages).should.be.true;
+          callback();
+        }]
+      }, done);
+    });
+    it.only('batches a msg when state is ready and msg is in join map',
+      function(done) {
+      var message = util.clone(mockData.messages.alpha);
+      var batch = util.clone(mockData.batches.alpha);
+      batch.value.dirty = true;
+      batch.value.messages[message.value.id] = true;
+      message.value.meta.batch.state = 'ready';
+      async.auto({
+        insertMessage: function(callback) {
+          store.insert(message, callback);
+        },
+        insertBatch: function(callback) {
+          storeBatch.insert(batch, callback);
+        },
+        act: ['insertMessage', 'insertBatch', function(callback) {
+          brMessages._batchMessage(batch.value, message.value, callback);
+        }],
+        messageQuery: ['act', function(callback) {
+          store.findOne({}, callback);
+        }],
+        batchQuery: ['act', function(callback) {
+          storeBatch.findOne({}, callback);
+        }],
+        test: ['messageQuery', 'batchQuery', function(callback, results) {
+          var m = results.messageQuery.value;
+          m.meta.batch.id.should.equal(0);
+          m.meta.batch.state.should.equal('ready');
+          var b = results.batchQuery.value;
+          console.log('%%%%%%%%%', b);
+          b.id.should.equal(0);
+          b.recipient.should.equal(message.value.recipient);
+          should.exist(b.messages);
+          b.messages.should.be.an('object');
+          _.isEmpty(b.messages).should.be.true;
           callback();
         }]
       }, done);
@@ -211,11 +249,10 @@ describe('bedrock-messages message batching functions', function() {
         }]
       }, done);
     });
-    it('return message and increment batch if message is ready and not in the join map',
+    it('return message if message is ready and not in the join map',
       function(done) {
       var batch = util.clone(mockData.batches.alpha);
       var message = util.clone(mockData.messages.alpha);
-      // batch.value.messages[message.value.id] = true;
       message.value.meta.batch.state = 'ready';
       async.auto({
         insertMessage: function(callback) {
@@ -249,13 +286,7 @@ describe('bedrock-messages message batching functions', function() {
     it('does not increments the batch if no message is returned',
       function(done) {
       var batch = util.clone(mockData.batches.alpha);
-      // var message = util.clone(mockData.messages.alpha);
-      // batch.value.messages[message.value.id] = true;
-      // message.value.meta.batch.state = 'ready';
       async.auto({
-        // insertMessage: function(callback) {
-        //   store.insert(message, callback);
-        // },
         insertBatch: function(callback) {
           storeBatch.insert(batch, callback);
         },
@@ -274,4 +305,37 @@ describe('bedrock-messages message batching functions', function() {
       }, done);
     });
   }); // end deliverBatch
+  describe('cleanupJob function', function() {
+    afterEach(function(done) {
+      helpers.removeCollections(
+        {collections: ['messagesBatch', 'messages']}, done);
+    });
+    it('does something great', function(done) {
+      var batch = util.clone(mockData.batches.alpha);
+      var message = util.clone(mockData.messages.alpha);
+      batch.value.messages[message.value.id] = true;
+      batch.value.dirty = true;
+      message.value.meta.batch.state = 'ready';
+      async.auto({
+        insertMessage: function(callback) {
+          store.insert(message, callback);
+        },
+        insertBatch: function(callback) {
+          storeBatch.insert(batch, callback);
+        },
+        cleanup: ['insertMessage', 'insertBatch', function(callback) {
+          brMessages._cleanupJob(callback);
+        }],
+        readBatch: ['cleanup', function(callback) {
+          brMessages._readBatch(batch.value.recipient, callback);
+        }],
+        test: ['readBatch', function(callback, results) {
+          should.exist(results.readBatch);
+          results.readBatch.id.should.equal(0);
+          console.log('$$$$$$$', results.readBatch);
+          callback();
+        }]
+      }, done);
+    });
+  }); // end cleanupJob
 });
