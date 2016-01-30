@@ -347,7 +347,8 @@ describe('bedrock-messages message batching functions', function() {
       helpers.removeCollections(
         {collections: ['messagesBatch', 'messages']}, done);
     });
-    it('does something great', function(done) {
+    it('batches where msg state is ready and msg is in join map',
+      function(done) {
       var batch = util.clone(mockData.batches.alpha);
       var message = util.clone(mockData.messages.alpha);
       batch.value.messages[message.value.id] = true;
