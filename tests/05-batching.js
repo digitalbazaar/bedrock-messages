@@ -498,6 +498,8 @@ describe.only('bedrock-messages message batching functions', function() {
           storeBatch.findOne({}, callback);
         }],
         test: ['messageQuery', 'batchQuery', function(callback, results) {
+          // TODO test messages return -- messages should not be included
+          // but that's ok because they'll be picked up on the next closeBatch
           var m = results.messageQuery.value;
           m.meta.batch.id.should.equal(message.value.meta.batch.id + 1);
           m.meta.batch.state.should.equal('ready');
