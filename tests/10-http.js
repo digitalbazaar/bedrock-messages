@@ -33,7 +33,13 @@ var messagesEndpoint =
   config.server.baseUri + config.messages.endpoints.messages;
 
 describe('bedrock-messages HTTP API', function() {
-  describe('unauthenticated requests', function() {
+  describe('unauthenticated or incorrect requests', function() {
+    before('Prepare the database', function(done) {
+      helpers.prepareDatabase(mockData, done);
+    });
+    after('Remove test data', function(done) {
+      helpers.removeCollections(done);
+    });
     it('should respond with 400 - PermissionDenied', function(done) {
       var user = mockData.identities.rsa4096;
       request.post({
@@ -47,6 +53,204 @@ describe('bedrock-messages HTTP API', function() {
         body.type.should.equal('PermissionDenied');
         done();
       });
+    });
+    it('does not allow access to another user\'s messages',
+      function(done) {
+      var user = mockData.identities.rsa4096;
+      var badUserId = 'did:' + uuid();
+      request.post(
+        helpers.createHttpSigRequest(
+          messagesSearchEndpoint + '/' + badUserId + '/new', user),
+        function(err, res, body) {
+          should.not.exist(err);
+          res.statusCode.should.equal(403);
+          should.exist(body);
+          body.should.be.an('object');
+          should.exist(body.type);
+          body.type.should.be.a('string');
+          body.type.should.equal('PermissionDenied');
+          should.exist(body.details.sysPermission);
+          body.details.sysPermission.should.be.a('string');
+          body.details.sysPermission.should.equal('MESSAGE_ACCESS');
+          done();
+        });
+    });
+    it('not allow another user to delete message', function(done) {
+      var user = mockData.identities.rsa4096;
+      var invalidUser = mockData.identities.rsa2048;
+      var messageId;
+      async.auto({
+        insert: function(callback) {
+          brMessages.store(
+            helpers.createMessage({recipient: user.identity.id}), callback);
+        },
+        getMessageId: ['insert', function(callback) {
+          request.post(helpers.createHttpSigRequest(
+            messagesSearchEndpoint + '/' + user.identity.id, user),
+            function(err, res, body) {
+              messageId = body[0].id;
+              callback();
+            });
+        }],
+        del: ['getMessageId', function(callback) {
+          request.del(
+            helpers.createHttpSigRequest(
+              messagesEndpoint + '/' + messageId, invalidUser),
+            function(err, res, body) {
+              should.not.exist(err);
+              body.result.ok.should.equal(1);
+              res.statusCode.should.equal(200);
+              body.result.n.should.equal(0);
+              done();
+            });
+        }]
+      }, done);
+    });
+    it('does not allow access to another user\'s messages', function(done) {
+      var user = mockData.identities.rsa4096;
+      var otherUser = mockData.identities.rsa2048;
+      request.post(
+            helpers.createHttpSigRequest(
+              messagesSearchEndpoint + '/' + user.identity.id + '/new',
+                otherUser),
+            function(err, res, body) {
+              should.not.exist(err);
+              res.statusCode.should.equal(403);
+              should.exist(body);
+              body.should.be.an('object');
+              should.exist(body.type);
+              body.type.should.be.a('string');
+              body.type.should.equal('PermissionDenied');
+              should.exist(body.details.sysPermission);
+              body.details.sysPermission.should.be.a('string');
+              body.details.sysPermission.should.equal('MESSAGE_ACCESS');
+              done();
+            });
+    });
+    it('does not allow user to access another users old/new messages',
+        function(done) {
+      var user = mockData.identities.rsa4096;
+      var otherUser = mockData.identities.rsa2048;
+      async.auto({
+        insert: function(callback) {
+          brMessages.store(
+            helpers.createMessage({recipient: user.identity.id}), callback);
+        },
+        get: ['insert', function(callback) {
+          request.post(
+            helpers.createHttpSigRequest(
+              messagesSearchEndpoint + '/' + user.identity.id, otherUser),
+            function(err, res, body) {
+            should.not.exist(err);
+            res.statusCode.should.equal(403);
+            should.exist(body);
+            should.exist(body.type);
+            body.type.should.equal('PermissionDenied');
+            should.exist(body.details.sysPermission);
+            body.details.sysPermission.should.equal('MESSAGE_ACCESS');
+            done();
+          });
+        }]
+      }, done);
+    });
+    it('not allow another user to delete a batch of messages', function(done) {
+      var user = mockData.identities.rsa4096;
+      var otherUser = mockData.identities.rsa2048;
+      var messageIdOne;
+      var messageIdTwo;
+      var messageIdBatch;
+      async.auto({
+        getMessageIds: function(callback) {
+          request.post(
+            helpers.createHttpSigRequest(
+              messagesSearchEndpoint + '/' + user.identity.id,user),
+            function(err, res, body) {
+              messageIdOne = body[0].id;
+              messageIdTwo = body[1].id;
+              messageIdBatch = [messageIdOne, messageIdTwo];
+              callback();
+            });
+        },
+        del: ['getMessageIds', function(callback) {
+          request.del(
+            helpers.createHttpSigDelRequest
+              (messagesBatchEndpoint,otherUser,messageIdBatch),
+            function(err, res, body) {
+            should.not.exist(err);
+            should.exist(body);
+            body.message.should.equal('An internal server error occurred.');
+            callback();
+          });
+        }],
+        get: ['del', function(callback) {
+          request.post(
+            helpers.createHttpSigRequest(
+              messagesSearchEndpoint + '/' + user.identity.id, user),
+            function(err, res, body) {
+              should.not.exist(err);
+              body.should.be.an('array');
+              body.should.have.length(2);
+              done();
+            });
+        }]
+      }, done);
+    });
+    it('not allow another user to archive one message', function(done) {
+      var user = mockData.identities.rsa4096;
+      var otherUser = mockData.identities.rsa2048;
+      var messageId;
+      async.auto({
+        getMessageId: function(callback) {
+          request.post(helpers.createHttpSigRequest(
+            messagesSearchEndpoint + '/' + user.identity.id, user),
+            function(err, res, body) {
+              messageId = body[0].id;
+              callback();
+            });
+        },
+        update: ['getMessageId', function(callback) {
+          request.post(
+            helpers.createHttpSigUpdateRequest(
+              messagesEndpoint + '/' +
+                messageId, otherUser, messageId,'archive'),
+            function(err, res, body) {
+              should.not.exist(err);
+              body.ok.should.equal(1);
+              body.nModified.should.equal(0);
+              body.n.should.equal(0);
+              done();
+            });
+        }]
+      }, done);
+    });
+    it('not allow another user to archive batch of messages', function(done) {
+      var user = mockData.identities.rsa4096;
+      var otherUser = mockData.identities.rsa2048;
+      var messageIdOne;
+      var messageIdTwo;
+      var messageIdBatch;
+      async.auto({
+        getMessagesId: function(callback) {
+          request.post(helpers.createHttpSigRequest(
+            messagesSearchEndpoint + '/' + user.identity.id, user),
+            function(err, res, body) {
+              messageIdOne = body[0].id;
+              messageIdTwo = body[1].id;
+              messageIdBatch = [messageIdOne, messageIdTwo];
+              callback();
+            });
+        },
+        update: ['getMessagesId', function(callback) {
+          request.post(
+            helpers.createHttpSigUpdateBatchRequest(
+              messagesBatchEndpoint, otherUser, messageIdBatch,'archive'),
+            function(err, res, body) {
+              should.not.exist(err);
+              body.message.should.equal('An internal server error occurred.');
+              done();
+            });
+        }]
+      }, done);
     });
   });
 
@@ -121,27 +325,6 @@ describe('bedrock-messages HTTP API', function() {
         }]
       }, done);
     });
-    it('does not allow access to another user\'s messages',
-      function(done) {
-      var user = mockData.identities.rsa4096;
-      var badUserId = 'did:' + uuid();
-      request.post(
-        helpers.createHttpSigRequest(
-          messagesSearchEndpoint + '/' + badUserId + '/new', user),
-        function(err, res, body) {
-          should.not.exist(err);
-          res.statusCode.should.equal(403);
-          should.exist(body);
-          body.should.be.an('object');
-          should.exist(body.type);
-          body.type.should.be.a('string');
-          body.type.should.equal('PermissionDenied');
-          should.exist(body.details.sysPermission);
-          body.details.sysPermission.should.be.a('string');
-          body.details.sysPermission.should.equal('MESSAGE_ACCESS');
-          done();
-        });
-    });
     it('return zero messages if no NEW messages', function(done) {
       var user = mockData.identities.rsa4096;
       request.post(
@@ -195,16 +378,13 @@ describe('bedrock-messages HTTP API', function() {
     it('not allow access to another users message with brpassport',
       function(done) {
       var user = mockData.identities.rsa4096;
-      var invalidUser = mockData.identities.rsa4096v2;
+      var invalidUser = mockData.identities.rsa2048;
       request.post(
         helpers.createHttpSigRequest(messagesSearchEndpoint, invalidUser),
         function(err, res, body) {
           should.not.exist(err);
-          res.statusCode.should.equal(400);
+          res.statusCode.should.equal(200);
           should.exist(body);
-          should.exist(body.type);
-          body.type.should.be.a('string');
-          body.type.should.equal('PermissionDenied');
           done();
         });
     });
@@ -272,33 +452,6 @@ describe('bedrock-messages HTTP API', function() {
             function(err, res, body) {
               body.result.ok.should.equal(1);
               body.result.n.should.equal(1);
-              done();
-            });
-        }]
-      }, done);
-    });
-    it('not allow another user to delete message', function(done) {
-      var user = mockData.identities.rsa4096;
-      var invalidUser = mockData.identities.rsa4096v2;
-      var messageId;
-      async.auto({
-        getMessageId: function(callback) {
-          request.post(helpers.createHttpSigRequest(
-            messagesSearchEndpoint + '/' + user.identity.id, user),
-            function(err, res, body) {
-              messageId = body[0].id;
-              callback();
-            });
-        },
-        del: ['getMessageId', function(callback) {
-          request.del(
-            helpers.createHttpSigRequest(
-              messagesEndpoint + '/' + messageId, invalidUser),
-            function(err, res, body) {
-              should.not.exist(err);
-              res.statusCode.should.equal(400);
-              body.message.should.equal('Request authentication error.');
-              body.type.should.equal('PermissionDenied');
               done();
             });
         }]
