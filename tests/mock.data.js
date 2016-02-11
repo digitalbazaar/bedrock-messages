@@ -90,3 +90,46 @@ identities[userName].keys = helpers.createKeyPair({
     'jZilGbZQKZOlQR2N73RWc1YvaZAxzG1m6LyhFAWEFpfIMFIfvEZyTDpnd7M=\n' +
     '-----END RSA PRIVATE KEY-----\n'
 });
+
+data.messages = {};
+data.messages.alpha = {
+  "id": "9eca36f90ded137ebef2a9b6c87cd6ed012fac9e32",
+  "recipient": "31db1e436b51d5e7e506ef61196e5215550f479824",
+  "value": {
+    "@context": "https://example.com/messages",
+    "date": "2016-01-27T22:37:18.839Z",
+    "recipient": "1ff4d704-325a-4a75-9a53-9414971d4cd2",
+    "sender": "a8f7335b-dfc3-43ac-b550-e81c82be7d95",
+    "subject": "d17b604f-13fc-4133-a1c2-91aa50308d86",
+    "type": "27497163-25ee-485f-bfdf-dcf4620cd545",
+    "content": {
+      "body": "cefb6558-5c77-4f64-81eb-1ee0e7c2ae0d",
+      "holder": "284943dd-5a55-4a0c-bf9b-3561109f0982",
+      "link": "7b64e253-5f55-4842-aebf-3d5fca63e68d"
+    },
+    "meta": {
+      "batch": {
+        "id": 0,
+        "state": "pending"
+      },
+      "events": [
+        {
+          "type": "created",
+          "date": 1453934238840,
+          "job": "f9abc787-27fb-47bc-b51b-5e47399c8ead"
+        }
+      ]
+    },
+    "id": "1453934238840-6c03604f-b8cc-4cc8-9f24-723b792dc34a"
+  }
+};
+
+data.batches = {};
+data.batches.alpha = {
+  "id": "31db1e436b51d5e7e506ef61196e5215550f479824",
+  "value": {
+    "id": 0,
+    "recipient": "1ff4d704-325a-4a75-9a53-9414971d4cd2",
+    "messages": {}
+  }
+};

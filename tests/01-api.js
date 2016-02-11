@@ -104,8 +104,6 @@ describe('bedrock-messages API requests', function() {
           event.type.should.equal('created');
           should.exist(event.date);
           event.date.should.be.a('number');
-          should.exist(event.batch);
-          event.batch.should.be.a('string');
           callback();
         }]
       }, done);
@@ -153,7 +151,7 @@ describe('bedrock-messages API requests', function() {
         },
         query: ['store', function(callback, results) {
           // check store results
-          results.store.valid.should.equal(7);
+          results.store.valid.count.should.equal(7);
           store.find(query, {}).toArray(callback);
         }],
         test: ['query', function(callback, results) {
@@ -163,6 +161,34 @@ describe('bedrock-messages API requests', function() {
           r.should.have.length(numberOfMessages);
           callback();
         }]
+      }, done);
+    });
+    it('store seven valid messages as an array w/random recipients',
+      function(done) {
+      var numberOfMessages = 7;
+      var testMessages = [];
+      for(var i = 0; i < numberOfMessages; i++) {
+        testMessages.push(helpers.createMessage());
+      }
+      // var query = {
+      //   recipient: database.hash(recipient)
+      // };
+      async.auto({
+        store: function(callback) {
+          brMessages.store(testMessages, callback);
+        },
+        // query: ['store', function(callback, results) {
+        //   // check store results
+        //   results.store.valid.should.equal(7);
+        //   store.find(query, {}).toArray(callback);
+        // }],
+        // test: ['query', function(callback, results) {
+        //   should.exist(results.query);
+        //   var r = results.query;
+        //   r.should.be.an('array');
+        //   r.should.have.length(numberOfMessages);
+        //   callback();
+        // }]
       }, done);
     });
     it('one invalid message is stored in invalidMessage table', function(done) {
@@ -235,13 +261,13 @@ describe('bedrock-messages API requests', function() {
         },
         queryValid: ['store', function(callback, results) {
           // check store results
-          results.store.valid.should.equal(0);
+          results.store.valid.count.should.equal(0);
           store.find(query, {}).toArray(callback);
         }],
         queryInvalid: ['store', function(callback, results) {
-          results.store.invalid.should.equal(7);
+          results.store.invalid.count.should.equal(7);
           var invalidQuery = {
-            'value.meta.events.batch': results.store.batch
+            'value.meta.events.job': results.store.job
           };
           storeInvalid.find(invalidQuery).toArray(callback);
         }],
@@ -279,15 +305,15 @@ describe('bedrock-messages API requests', function() {
         queryValid: ['store', function(callback, results) {
           // check store results
           var validQuery = {
-            'value.meta.events.batch': results.store.batch
+            'value.meta.events.job': results.store.job
           };
-          results.store.valid.should.equal(numberOfValidMessages);
+          results.store.valid.count.should.equal(numberOfValidMessages);
           store.find(validQuery, {}).toArray(callback);
         }],
         queryInvalid: ['store', function(callback, results) {
-          results.store.invalid.should.equal(numberOfInvalidMessages);
+          results.store.invalid.count.should.equal(numberOfInvalidMessages);
           var invalidQuery = {
-            'value.meta.events.batch': results.store.batch
+            'value.meta.events.job': results.store.job
           };
           storeInvalid.find(invalidQuery).toArray(callback);
         }],
@@ -307,7 +333,7 @@ describe('bedrock-messages API requests', function() {
 
   describe('get function', function() {
     afterEach(function(done) {
-      helpers.removeCollection('messages', done);
+      helpers.removeCollections({collections: ['messages']}, done);
     });
     it('retrieve one NEW messages by recipient', function(done) {
       var body = uuid();
@@ -472,7 +498,7 @@ describe('bedrock-messages API requests', function() {
 
   describe('update function', function() {
     afterEach(function(done) {
-      helpers.removeCollection('messages', done);
+      helpers.removeCollections({collections: ['messages']}, done);
     });
     it('archive one message', function(done) {
       var recipient = mockData.identities.rsa4096.identity.id;
@@ -591,7 +617,7 @@ describe('bedrock-messages API requests', function() {
 
   describe('update batch function', function() {
     afterEach(function(done) {
-      helpers.removeCollection('messages', done);
+      helpers.removeCollections({collections: ['messages']}, done);
     });
     it('archive two messages', function(done) {
       var recipient = mockData.identities.rsa4096.identity.id;
@@ -621,7 +647,7 @@ describe('bedrock-messages API requests', function() {
             operation: 'archive',
             messages: messageIds
           };
-          brMessages._batchUpdate(
+          brMessages._bulkUpdate(
             results.getIdentity[0], request, {recipient: recipient}, callback);
         }],
         test: ['act', function(callback, results) {
@@ -674,11 +700,11 @@ describe('bedrock-messages API requests', function() {
             operation: 'archive',
             messages: messageIds
           };
-          brMessages._batchUpdate(
+          brMessages._bulkUpdate(
             results.getIdentity[0], request, {recipient: recipient},
             function(err, result) {
               should.exist(err);
-              err.name.should.equal('BatchUpdateFailure');
+              err.name.should.equal('BulkUpdateFailure');
               should.exist(err.details.mongoResult.result.nModified);
               err.details.mongoResult.result.nModified.should.equal(1);
               callback();
@@ -707,7 +733,7 @@ describe('bedrock-messages API requests', function() {
             operation: 'foo',
             messages: messages
           };
-          brMessages._batchUpdate(
+          brMessages._bulkUpdate(
             results.getIdentity[0], request, {recipient: recipient},
             function(err, results) {
             should.exist(err);
@@ -724,7 +750,7 @@ describe('bedrock-messages API requests', function() {
 
   describe('delete function', function() {
     afterEach(function(done) {
-      helpers.removeCollection('messages', done);
+      helpers.removeCollections({collections: ['messages']}, done);
     });
     it('delete one message', function(done) {
       var recipient = mockData.identities.rsa4096.identity.id;
@@ -766,7 +792,7 @@ describe('bedrock-messages API requests', function() {
 
   describe('delete batch function', function() {
     afterEach(function(done) {
-      helpers.removeCollection('messages', done);
+      helpers.removeCollections({collections: ['messages']}, done);
     });
     it('delete two messages', function(done) {
       var recipient = mockData.identities.rsa4096.identity.id;
@@ -795,7 +821,7 @@ describe('bedrock-messages API requests', function() {
           var request = {
             messages: messageIds
           };
-          brMessages._batchDelete(
+          brMessages._bulkDelete(
             results.getIdentity[0], request, {recipient: recipient}, callback);
         }],
         test: ['act', function(callback, results) {
@@ -843,11 +869,11 @@ describe('bedrock-messages API requests', function() {
             operation: 'archive',
             messages: messageIds
           };
-          brMessages._batchDelete(
+          brMessages._bulkDelete(
             results.getIdentity[0], request, {recipient: recipient},
             function(err, result) {
               should.exist(err);
-              err.name.should.equal('BatchDeleteFailure');
+              err.name.should.equal('BulkDeleteFailure');
               should.exist(err.details.mongoResult.result.n);
               err.details.mongoResult.result.n.should.equal(1);
               callback();
@@ -859,7 +885,7 @@ describe('bedrock-messages API requests', function() {
 
   describe('getNew Function', function() {
     afterEach(function(done) {
-      helpers.removeCollection('messages', done);
+      helpers.removeCollections({collections: ['messages']}, done);
     });
     it('retrieve one NEW messages by recipient', function(done) {
       var body = uuid();
@@ -1051,7 +1077,7 @@ describe('bedrock-messages API requests', function() {
   });
   describe('getMessages function', function() {
     afterEach(function(done) {
-      helpers.removeCollection('messages', done);
+      helpers.removeCollections({collections: ['messages']}, done);
     });
     it('get some messages', function(done) {
       var recipient = mockData.identities.rsa4096.identity.id;
