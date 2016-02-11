@@ -15,6 +15,7 @@ var config = bedrock.config;
 var database = require('bedrock-mongodb');
 var helpers = require('./helpers');
 var mockData = require('./mock.data');
+var stateData = require('./state.data');
 var util = bedrock.util;
 var uuid = require('node-uuid').v4;
 
@@ -28,6 +29,69 @@ describe.only('bedrock-messages message batching functions', function() {
   after(function(done) {
     helpers.removeCollections(done);
   });
+
+// State 3 is making the batch dirty, but not really doing anything with it because someone else is working on it. 
+// is this intentional? or should this be changed?
+
+  describe('batchMessage state generation', function() {
+    afterEach(function(done) {
+      helpers.removeCollections(
+        {collections: ['messagesBatch', 'messages']}, done);
+    });
+    _.forEach(stateData.batchMessageStateData, function(batchMessageStateData) {
+      var msgData = batchMessageStateData.msgData;
+      var batchData = batchMessageStateData.batchData;
+      var expectedResult = batchMessageStateData.result;
+      var expectedResultStr = 'result should have msg state: ' + expectedResult.msgState + ', batch dirty: ' + expectedResult.dirty;
+      var inputStr = 'input: msg state: ' + msgData.state + ', batch dirty: ' + batchData.dirty
+      it(expectedResultStr + ' -- ' + inputStr,
+        function(done) {
+        var message = util.clone(mockData.messages.alpha);
+        var batch = util.clone(mockData.batches.alpha);
+
+        batch.value.dirty = batchData.dirty;
+        message.value.meta.batch.state = msgData.state;
+        if (batch.value.dirty) {
+          batch.value.messages[message.value.id] = true;
+        }
+        async.auto({
+          insertMessage: function(callback) {
+            store.insert(message, callback);
+          },
+          insertBatch: function(callback) {
+            storeBatch.insert(batch, callback);
+          },
+          act: ['insertMessage', 'insertBatch', function(callback) {
+            brMessages._batchMessage(batch.value, message.value, callback);
+          }],
+          messageQuery: ['act', function(callback) {
+            store.findOne({}, callback);
+          }],
+          batchQuery: ['act', function(callback) {
+            storeBatch.findOne({}, callback);
+          }],
+          test: ['messageQuery', 'batchQuery', function(callback, results) {
+            var m = results.messageQuery.value;
+            m.meta.batch.id.should.equal(0);
+            m.meta.batch.state.should.equal(expectedResult.msgState);
+            var b = results.batchQuery.value;
+            b.id.should.equal(0);
+            b.recipient.should.equal(message.value.recipient);
+            should.exist(b.messages);
+            b.messages.should.be.an('object');
+            if (expectedResult.dirty) {
+              should.exist(b.messages[message.value.id]);
+            }
+            else {
+              _.isEmpty(b.messages).should.be.true;
+            }
+            callback();
+          }]
+        }, done);
+      });
+    });
+  }); // end batchMessage state generation
+
   describe('batchMessage function', function() {
     afterEach(function(done) {
       helpers.removeCollections(
@@ -111,6 +175,42 @@ describe.only('bedrock-messages message batching functions', function() {
       var batch = util.clone(mockData.batches.alpha);
       batch.value.dirty = true;
       batch.value.messages[message.value.id] = true;
+      message.value.meta.batch.state = 'ready';
+      async.auto({
+        insertMessage: function(callback) {
+          store.insert(message, callback);
+        },
+        insertBatch: function(callback) {
+          storeBatch.insert(batch, callback);
+        },
+        act: ['insertMessage', 'insertBatch', function(callback) {
+          brMessages._batchMessage(batch.value, message.value, callback);
+        }],
+        messageQuery: ['act', function(callback) {
+          store.findOne({}, callback);
+        }],
+        batchQuery: ['act', function(callback) {
+          storeBatch.findOne({}, callback);
+        }],
+        test: ['messageQuery', 'batchQuery', function(callback, results) {
+          var m = results.messageQuery.value;
+          m.meta.batch.id.should.equal(0);
+          m.meta.batch.state.should.equal('ready');
+          var b = results.batchQuery.value;
+          b.id.should.equal(0);
+          b.recipient.should.equal(message.value.recipient);
+          should.exist(b.messages);
+          b.messages.should.be.an('object');
+          should.exist(b.messages[message.value.id]);
+          callback();
+        }]
+      }, done);
+    });
+    it('does nothing when msg state is ready and msg is not in join map',
+      function(done) {
+      var message = util.clone(mockData.messages.alpha);
+      var batch = util.clone(mockData.batches.alpha);
+      batch.value.dirty = false;
       message.value.meta.batch.state = 'ready';
       async.auto({
         insertMessage: function(callback) {
@@ -235,6 +335,75 @@ describe.only('bedrock-messages message batching functions', function() {
       }, done);
     });
   }); // end batchMessage
+  
+  describe('getUnbatchedMessage state generation', function() {
+    afterEach(function(done) {
+      helpers.removeCollections(
+        {collections: ['messagesBatch', 'messages']}, done);
+    });
+     _.forEach(stateData.getUnbatchedMessageStateData, function(data) {
+      var msgData = data.msgData;
+      var batchData = data.batchData;
+      var expectedResult = data.result;
+      
+      var expectedResultStr = '';
+      if (expectedResult === null) {
+        expectedResultStr = 'Result should be null'
+      }
+      else {
+        expectedResultStr = 'Resulting message should have "pending" state and id = ' + batchData.id;
+      }
+
+      var inputStr = 'input: msg state: ' + msgData.state + ', batch dirty: ' + batchData.dirty + ', batch id: ' + batchData.id;
+      it(expectedResultStr + ' -- ' + inputStr,
+        function(done) {
+        var batch = util.clone(mockData.batches.alpha);
+        var message = util.clone(mockData.messages.alpha);
+        
+        batch.value.id = batchData.id;
+        batch.value.dirty = batchData.dirty;
+        if (batch.value.dirty) {
+          batch.value.messages[message.value.id] = true;
+        }
+        message.value.meta.batch.state = msgData.state;
+
+        async.auto({
+          insertMessage: function(callback) {
+            store.insert(message, callback);
+          },
+          insertBatch: function(callback) {
+            storeBatch.insert(batch, callback);
+          },
+          getUnbatched: ['insertMessage', 'insertBatch', function(callback) {
+            brMessages._getUnbatchedMessage(null, callback);
+          }],
+          batchQuery: ['getUnbatched', function(callback) {
+            storeBatch.findOne({}, callback);
+          }],
+          messageQuery: ['getUnbatched', function(callback) {
+            store.findOne({}, callback);
+          }],
+          test: ['batchQuery', 'messageQuery', function(callback, results) {
+            if (expectedResult === null) {
+              should.not.exist(results.getUnbatched);
+              results.batchQuery.value.id.should.equal(batch.value.id);
+              results.messageQuery.value.meta.batch.id.should.equal(batch.value.id);
+            }
+            else {
+              should.exist(results.messageQuery);
+              should.exist(results.batchQuery);
+
+              results.batchQuery.value.id.should.equal(results.messageQuery.value.meta.batch.id);
+              results.messageQuery.value.meta.batch.state.should.equal('pending');
+            }
+
+            callback();
+          }]
+        }, done);
+      });
+    });
+  }); // End getUnbatchedMessage state generation
+
   describe('getUnbatchedMessage function', function() {
     afterEach(function(done) {
       helpers.removeCollections(
@@ -269,6 +438,8 @@ describe.only('bedrock-messages message batching functions', function() {
         }]
       }, done);
     });
+  // This test does not seem correct... the message should NOT be equal before and after, because its batch should have changed to the incremented batch.
+  // But, getUnbatchedMessage is returning the original message, rather than the reset message and we're returning true.
     it('returns a pending message', function(done) {
       var batch = util.clone(mockData.batches.alpha);
       var message = util.clone(mockData.messages.alpha);
@@ -373,6 +544,66 @@ describe.only('bedrock-messages message batching functions', function() {
       }, done);
     });
   }); // end getUnbatchedMessage
+
+  describe('deliverBatch state generation', function() {
+    afterEach(function(done) {
+      helpers.removeCollections(
+        {collections: ['messagesBatch', 'messages']}, done);
+    });
+     _.forEach(stateData.deliverBatchStateData, function(data) {
+      var msgData = data.msgData;
+      var batchData = data.batchData;
+      var expectedResult = data.result;
+      
+      var expectedResultStr = 'Message state should be pending and batch id = ' + expectedResult.id;
+
+      var inputStr = 'input: msg state: ' + msgData.state + ', msg id: ' + msgData.id + ', batch dirty: ' + batchData.dirty + ', batch id: ' + batchData.id;
+      it(expectedResultStr + ' -- ' + inputStr,
+        function(done) {
+        var batch = util.clone(mockData.batches.alpha);
+        var message = util.clone(mockData.messages.alpha);
+        
+        batch.value.id = batchData.id;
+        batch.value.dirty = batchData.dirty;
+        if (batch.value.dirty) {
+          batch.value.messages[message.value.id] = true;
+        }
+        message.value.meta.batch.state = msgData.state;
+        message.value.meta.batch.id = msgData.id;
+
+        async.auto({
+          insertMessage: function(callback) {
+            store.insert(message, callback);
+          },
+          insertBatch: function(callback) {
+            storeBatch.insert(batch, callback);
+          },
+          closeBatch: ['insertMessage', 'insertBatch', function(callback) {
+            brMessages._closeBatch(batch.value.recipient, callback);
+          }],
+          readBatch: ['closeBatch', function(callback) {
+            brMessages._readBatch(batch.value.recipient, callback);
+          }],
+          test: ['readBatch', function(callback, results) {
+            should.exist(results.readBatch);
+            results.readBatch.id.should.equal(expectedResult.id);
+            if (expectedResult.length === 0) {
+              should.not.exist(results.closeBatch);
+            }
+            else {
+              should.exist(results.closeBatch.messages);
+              results.closeBatch.messages.should.be.an('array');
+              results.closeBatch.messages.should.have.length(expectedResult.length);
+              delete message.value.meta;
+              results.closeBatch.messages[0].value.should.deep.equal(message.value);
+            }
+            callback();
+          }]
+        }, done);
+      });
+    });
+  }); // end deliverBatch state generation
+
   describe('deliverBatch function', function() {
     afterEach(function(done) {
       helpers.removeCollections(
@@ -513,6 +744,7 @@ describe.only('bedrock-messages message batching functions', function() {
       }, done);
     });
   }); // end deliverBatch
+
   describe('cleanupJob function', function() {
     afterEach(function(done) {
       helpers.removeCollections(
@@ -555,6 +787,62 @@ describe.only('bedrock-messages message batching functions', function() {
       }, done);
     });
   }); // end cleanupJob
+
+
+  
+  describe('resetMessage state generation', function() {
+    afterEach(function(done) {
+      helpers.removeCollections(
+        {collections: ['messagesBatch', 'messages']}, done);
+    });
+     _.forEach(stateData.resetMessageStateData, function(data) {
+      var msgData = data.msgData;
+      var batchData = data.batchData;
+      var expectedResult = data.result;
+      
+      var expectedResultStr = 'Message state should be pending and batch id = ' + batchData.id;
+
+      var inputStr = 'input: msg state: ' + msgData.state + ', batch dirty: ' + batchData.dirty + ', batch id: ' + batchData.id;
+      it(expectedResultStr + ' -- ' + inputStr,
+        function(done) {
+        var batch = util.clone(mockData.batches.alpha);
+        var message = util.clone(mockData.messages.alpha);
+        
+        batch.value.id = batchData.id;
+        batch.value.dirty = batchData.dirty;
+        if (batch.value.dirty) {
+          batch.value.messages[message.value.id] = true;
+        }
+        message.value.meta.batch.state = msgData.state;
+
+        async.auto({
+          insertMessage: function(callback) {
+            store.insert(message, callback);
+          },
+          insertBatch: function(callback) {
+            storeBatch.insert(batch, callback);
+          },
+          getUnbatched: ['insertMessage', 'insertBatch', function(callback) {
+            brMessages._resetMessage(batch.value, message.value, callback);
+          }],
+          batchQuery: ['getUnbatched', function(callback) {
+            storeBatch.findOne({}, callback);
+          }],
+          messageQuery: ['getUnbatched', function(callback) {
+            store.findOne({}, callback);
+          }],
+          test: ['batchQuery', 'messageQuery', function(callback, results) {
+            should.exist(results.messageQuery);
+            should.exist(results.batchQuery);
+            results.batchQuery.value.id.should.equal(results.messageQuery.value.meta.batch.id);
+            results.messageQuery.value.meta.batch.state.should.equal('pending');
+            callback();
+          }]
+        }, done);
+      });
+    });
+  }); // End resetMessage state generation
+
   describe('resetMessage function', function() {
     afterEach(function(done) {
       helpers.removeCollections(
@@ -595,4 +883,5 @@ describe.only('bedrock-messages message batching functions', function() {
       }, done);
     });
   }); // end resetMessage
+
 });
