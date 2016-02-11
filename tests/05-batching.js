@@ -30,9 +30,6 @@ describe.only('bedrock-messages message batching functions', function() {
     helpers.removeCollections(done);
   });
 
-// State 3 is making the batch dirty, but not really doing anything with it because someone else is working on it. 
-// is this intentional? or should this be changed?
-
   describe('batchMessage state generation', function() {
     afterEach(function(done) {
       helpers.removeCollections(
@@ -42,8 +39,11 @@ describe.only('bedrock-messages message batching functions', function() {
       var msgData = batchMessageStateData.msgData;
       var batchData = batchMessageStateData.batchData;
       var expectedResult = batchMessageStateData.result;
-      var expectedResultStr = 'result should have msg state: ' + expectedResult.msgState + ', batch dirty: ' + expectedResult.dirty;
-      var inputStr = 'input: msg state: ' + msgData.state + ', batch dirty: ' + batchData.dirty
+      var expectedResultStr = 'result should have msg state: ';
+      expectedResultStr += expectedResult.msgState;
+      expectedResultStr += ', batch dirty: ' + expectedResult.dirty;
+      var inputStr = 'input: msg state: ' + msgData.state;
+      inputStr += ', batch dirty: ' + batchData.dirty;
       it(expectedResultStr + ' -- ' + inputStr,
         function(done) {
         var message = util.clone(mockData.messages.alpha);
@@ -51,7 +51,7 @@ describe.only('bedrock-messages message batching functions', function() {
 
         batch.value.dirty = batchData.dirty;
         message.value.meta.batch.state = msgData.state;
-        if (batch.value.dirty) {
+        if(batch.value.dirty) {
           batch.value.messages[message.value.id] = true;
         }
         async.auto({
@@ -79,10 +79,9 @@ describe.only('bedrock-messages message batching functions', function() {
             b.recipient.should.equal(message.value.recipient);
             should.exist(b.messages);
             b.messages.should.be.an('object');
-            if (expectedResult.dirty) {
+            if(expectedResult.dirty) {
               should.exist(b.messages[message.value.id]);
-            }
-            else {
+            } else {
               _.isEmpty(b.messages).should.be.true;
             }
             callback();
@@ -283,7 +282,7 @@ describe.only('bedrock-messages message batching functions', function() {
         }]
       }, done);
     });
-    it('message goes to "ready" state and message stays in join list if batch increments mid-function', 
+    it('message goes to "ready" state and message stays in join list if batch increments mid-function',
       function(done) {
       var message = util.clone(mockData.messages.alpha);
       var batch = util.clone(mockData.batches.alpha);
@@ -335,34 +334,36 @@ describe.only('bedrock-messages message batching functions', function() {
       }, done);
     });
   }); // end batchMessage
-  
+
   describe('getUnbatchedMessage state generation', function() {
     afterEach(function(done) {
       helpers.removeCollections(
         {collections: ['messagesBatch', 'messages']}, done);
     });
-     _.forEach(stateData.getUnbatchedMessageStateData, function(data) {
+    _.forEach(stateData.getUnbatchedMessageStateData, function(data) {
       var msgData = data.msgData;
       var batchData = data.batchData;
       var expectedResult = data.result;
-      
+
       var expectedResultStr = '';
-      if (expectedResult === null) {
-        expectedResultStr = 'Result should be null'
-      }
-      else {
-        expectedResultStr = 'Resulting message should have "pending" state and id = ' + batchData.id;
+      if(expectedResult === null) {
+        expectedResultStr = 'Result should be null';
+      } else {
+        expectedResultStr = 'Resulting message should have "pending" state and id = ';
+        expectedResultStr += batchData.id;
       }
 
-      var inputStr = 'input: msg state: ' + msgData.state + ', batch dirty: ' + batchData.dirty + ', batch id: ' + batchData.id;
+      var inputStr = 'input: msg state: ' + msgData.state;
+      inputStr += ', batch dirty: ' + batchData.dirty;
+      inputStr += ', batch id: ' + batchData.id;
       it(expectedResultStr + ' -- ' + inputStr,
         function(done) {
         var batch = util.clone(mockData.batches.alpha);
         var message = util.clone(mockData.messages.alpha);
-        
+
         batch.value.id = batchData.id;
         batch.value.dirty = batchData.dirty;
-        if (batch.value.dirty) {
+        if(batch.value.dirty) {
           batch.value.messages[message.value.id] = true;
         }
         message.value.meta.batch.state = msgData.state;
@@ -384,12 +385,11 @@ describe.only('bedrock-messages message batching functions', function() {
             store.findOne({}, callback);
           }],
           test: ['batchQuery', 'messageQuery', function(callback, results) {
-            if (expectedResult === null) {
+            if(expectedResult === null) {
               should.not.exist(results.getUnbatched);
               results.batchQuery.value.id.should.equal(batch.value.id);
               results.messageQuery.value.meta.batch.id.should.equal(batch.value.id);
-            }
-            else {
+            } else {
               should.exist(results.messageQuery);
               should.exist(results.batchQuery);
 
@@ -438,8 +438,9 @@ describe.only('bedrock-messages message batching functions', function() {
         }]
       }, done);
     });
-  // This test does not seem correct... the message should NOT be equal before and after, because its batch should have changed to the incremented batch.
-  // But, getUnbatchedMessage is returning the original message, rather than the reset message and we're returning true.
+
+    //FIXME: getUnbatchedMessage and resetMessage are returning the orginally passed in message, rather than the updated one.
+    //This implemention is unexpected, and should be changed.
     it('returns a pending message', function(done) {
       var batch = util.clone(mockData.batches.alpha);
       var message = util.clone(mockData.messages.alpha);
@@ -550,22 +551,26 @@ describe.only('bedrock-messages message batching functions', function() {
       helpers.removeCollections(
         {collections: ['messagesBatch', 'messages']}, done);
     });
-     _.forEach(stateData.deliverBatchStateData, function(data) {
+    _.forEach(stateData.deliverBatchStateData, function(data) {
       var msgData = data.msgData;
       var batchData = data.batchData;
       var expectedResult = data.result;
-      
-      var expectedResultStr = 'Message state should be pending and batch id = ' + expectedResult.id;
 
-      var inputStr = 'input: msg state: ' + msgData.state + ', msg id: ' + msgData.id + ', batch dirty: ' + batchData.dirty + ', batch id: ' + batchData.id;
+      var expectedResultStr = 'Message state should be pending and batch id = ';
+      expectedResultStr += expectedResult.id;
+
+      var inputStr = 'input: msg state: ' + msgData.state;
+      inputStr += ', msg id: ' + msgData.id;
+      inputStr += ', batch dirty: ' + batchData.dirty;
+      inputStr += ', batch id: ' + batchData.id;
       it(expectedResultStr + ' -- ' + inputStr,
         function(done) {
         var batch = util.clone(mockData.batches.alpha);
         var message = util.clone(mockData.messages.alpha);
-        
+
         batch.value.id = batchData.id;
         batch.value.dirty = batchData.dirty;
-        if (batch.value.dirty) {
+        if(batch.value.dirty) {
           batch.value.messages[message.value.id] = true;
         }
         message.value.meta.batch.state = msgData.state;
@@ -587,10 +592,9 @@ describe.only('bedrock-messages message batching functions', function() {
           test: ['readBatch', function(callback, results) {
             should.exist(results.readBatch);
             results.readBatch.id.should.equal(expectedResult.id);
-            if (expectedResult.length === 0) {
+            if(expectedResult.length === 0) {
               should.not.exist(results.closeBatch);
-            }
-            else {
+            } else {
               should.exist(results.closeBatch.messages);
               results.closeBatch.messages.should.be.an('array');
               results.closeBatch.messages.should.have.length(expectedResult.length);
@@ -788,29 +792,30 @@ describe.only('bedrock-messages message batching functions', function() {
     });
   }); // end cleanupJob
 
-
-  
   describe('resetMessage state generation', function() {
     afterEach(function(done) {
       helpers.removeCollections(
         {collections: ['messagesBatch', 'messages']}, done);
     });
-     _.forEach(stateData.resetMessageStateData, function(data) {
+    _.forEach(stateData.resetMessageStateData, function(data) {
       var msgData = data.msgData;
       var batchData = data.batchData;
       var expectedResult = data.result;
-      
-      var expectedResultStr = 'Message state should be pending and batch id = ' + batchData.id;
 
-      var inputStr = 'input: msg state: ' + msgData.state + ', batch dirty: ' + batchData.dirty + ', batch id: ' + batchData.id;
+      var expectedResultStr = 'Message state should be pending and batch id = ';
+      expectedResultStr += batchData.id;
+
+      var inputStr = 'input: msg state: ' + msgData.state;
+      inputStr += ', batch dirty: ' + batchData.dirty;
+      inputStr += ', batch id: ' + batchData.id;
       it(expectedResultStr + ' -- ' + inputStr,
         function(done) {
         var batch = util.clone(mockData.batches.alpha);
         var message = util.clone(mockData.messages.alpha);
-        
+
         batch.value.id = batchData.id;
         batch.value.dirty = batchData.dirty;
-        if (batch.value.dirty) {
+        if(batch.value.dirty) {
           batch.value.messages[message.value.id] = true;
         }
         message.value.meta.batch.state = msgData.state;
