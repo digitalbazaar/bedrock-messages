@@ -26,24 +26,24 @@ data.batchMessageStateData = [
 ];
 
 data.getUnbatchedMessageStateData = [
-	{msgData: {state: 'ready'}, batchData: {dirty: true, id: 1}, result: true},
-	{msgData: {state: 'ready'}, batchData: {dirty: true, id: 0}, result: true},
-	{msgData: {state: 'pending'}, batchData: {dirty: false, id: 0}, result: true},
-	{msgData: {state: 'pending'}, batchData: {dirty: false, id: 1}, result: true},
-	{msgData: {state: 'ready'}, batchData: {dirty: false, id: 0}, result: null}
+  {msgData: {state: 'ready'}, batchData: {dirty: true, id: 1}, result: true},
+  {msgData: {state: 'ready'}, batchData: {dirty: true, id: 0}, result: true},
+  {msgData: {state: 'pending'}, batchData: {dirty: false, id: 0}, result: true},
+  {msgData: {state: 'pending'}, batchData: {dirty: false, id: 1}, result: true},
+  {msgData: {state: 'ready'}, batchData: {dirty: false, id: 0}, result: null}
 ];
 
 // Not currently testing the return value of this function
 // only testing the resulting database changes
 data.resetMessageStateData = [
-	{msgData: {state: 'ready'}, batchData: {dirty: false, id: 0}},
-	{msgData: {state: 'ready'}, batchData: {dirty: false, id: 1}},
-	{msgData: {state: 'ready'}, batchData: {dirty: true, id: 0}},
-	{msgData: {state: 'ready'}, batchData: {dirty: true, id: 1}},
-	{msgData: {state: 'pending'}, batchData: {dirty: false, id: 0}},
-	{msgData: {state: 'pending'}, batchData: {dirty: false, id: 1}},
-	{msgData: {state: 'pending'}, batchData: {dirty: true, id: 0}},
-	{msgData: {state: 'pending'}, batchData: {dirty: true, id: 1}}
+  {msgData: {state: 'ready'}, batchData: {dirty: false, id: 0}},
+  {msgData: {state: 'ready'}, batchData: {dirty: false, id: 1}},
+  {msgData: {state: 'ready'}, batchData: {dirty: true, id: 0}},
+  {msgData: {state: 'ready'}, batchData: {dirty: true, id: 1}},
+  {msgData: {state: 'pending'}, batchData: {dirty: false, id: 0}},
+  {msgData: {state: 'pending'}, batchData: {dirty: false, id: 1}},
+  {msgData: {state: 'pending'}, batchData: {dirty: true, id: 0}},
+  {msgData: {state: 'pending'}, batchData: {dirty: true, id: 1}}
 ];
 
 data.deliverBatchStateData = [
