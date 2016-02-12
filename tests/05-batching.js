@@ -297,11 +297,11 @@ describe('bedrock-messages message batching functions', function() {
         },
         updateBatch: ['insertMessage', 'insertBatch', function(callback) {
           brMessages
-            ._batchMessagePhase1(batch.value, message.value, null, callback);
+            ._batchMessageUpdateBatch(batch.value, message.value, null, callback);
         }],
         updateMessage: ['updateBatch', function(callback, results) {
           brMessages
-            ._batchMessagePhase2(batch.value, message.value, null, callback, {'updateBatch': results.updateBatch});
+            ._batchMessageUpdateMessage(batch.value, message.value, null, {'updateBatch': results.updateBatch}, callback);
         }],
         otherProcessUpdate: ['updateMessage', function(callback) {
           var q = {id: database.hash(batch.value.recipient)};
@@ -310,7 +310,7 @@ describe('bedrock-messages message batching functions', function() {
         }],
         removeFromMap: ['otherProcessUpdate', function(callback, results) {
           brMessages
-          ._batchMessagePhase3(batch.value, message.value, null, callback, {'updateMessage': results.updateMessage});
+          ._batchMessageRemoveFromMap(batch.value, message.value, null, {'updateMessage': results.updateMessage}, callback);
         }],
         messageQuery: ['removeFromMap', function(callback) {
           store.findOne({}, callback);
@@ -804,15 +804,15 @@ describe('bedrock-messages message batching functions', function() {
         },
         readBatch: ['insertMessage', 'insertBatch', function(callback) {
           brMessages
-            ._closeBatchPhase1(batch.value.recipient, null, callback);
+            ._closeBatchReadBatch(batch.value.recipient, null, callback);
         }],
         findMessage: ['readBatch', function(callback, results) {
           brMessages
-            ._closeBatchPhase2(batch.value.recipient, null, callback, results);
+            ._closeBatchFindMessage(batch.value.recipient, null, results, callback);
         }],
         updateBatch: ['findMessage', function(callback, results) {
           brMessages
-            ._closeBatchPhase3(batch.value.recipient, null, callback, results);
+            ._closeBatchUpdateBatch(batch.value.recipient, null, results, callback);
         }],
         otherProcessUpdate: ['updateBatch', function(callback) {
           var u = {$inc: {'value.meta.batch.id': 1}};
@@ -820,7 +820,7 @@ describe('bedrock-messages message batching functions', function() {
         }],
         getMessages: ['otherProcessUpdate', function(callback, results) {
           brMessages
-          ._closeBatchPhase4(batch.value.recipient, null, callback, results);
+          ._closeBatchGetMessages(batch.value.recipient, null, results, callback);
         }],
         messageQuery: ['getMessages', function(callback) {
           store.findOne({}, callback);
@@ -857,7 +857,7 @@ describe('bedrock-messages message batching functions', function() {
         },
         readBatch: ['insertMessage', 'insertBatch', function(callback) {
           brMessages
-            ._closeBatchPhase1(batch.value.recipient, null, callback);
+            ._closeBatchReadBatch(batch.value.recipient, null, callback);
         }],
         otherProcessUpdate: ['readBatch', function(callback) {
           var u = {$inc: {'value.id': 1}};
@@ -865,15 +865,15 @@ describe('bedrock-messages message batching functions', function() {
         }],
         findMessage: ['otherProcessUpdate', function(callback, results) {
           brMessages
-            ._closeBatchPhase2(batch.value.recipient, null, callback, results);
+            ._closeBatchFindMessage(batch.value.recipient, null, results, callback);
         }],
         updateBatch: ['findMessage', function(callback, results) {
           brMessages
-            ._closeBatchPhase3(batch.value.recipient, null, callback, results);
+            ._closeBatchUpdateBatch(batch.value.recipient, null, results, callback);
         }],
         getMessages: ['updateBatch', function(callback, results) {
           brMessages
-          ._closeBatchPhase4(batch.value.recipient, function(err, results) {
+          ._closeBatchGetMessages(batch.value.recipient, function(err, results) {
             // Should return here, with null err and results.
             callback();
           }, callback, results);
