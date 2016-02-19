@@ -921,7 +921,7 @@ describe('bedrock-messages API requests', function() {
             should.exist(results);
             results.should.be.an('array');
             results.should.have.length(1);
-            var message = results[0].value;
+            var message = results[0];
             message.should.be.an('object');
             should.exist(message['@context']);
             message['@context'].should.be.a('string');
@@ -971,7 +971,7 @@ describe('bedrock-messages API requests', function() {
           brMessages._getNew(
             results.getIdentity[0], recipient, function(err, results) {
             should.not.exist(err);
-            var message = results[0].value;
+            var message = results[0];
             message.should.be.an('object');
             // check message
             _.difference(Object.keys(message), Object.keys(referenceMessage))
@@ -1002,7 +1002,7 @@ describe('bedrock-messages API requests', function() {
         getFirst: ['process', function(callback, results) {
           brMessages._getNew(
             results.getIdentity[0], recipient, function(err, results) {
-            results[0].value.recipient.should.equal(recipient);
+            results[0].recipient.should.equal(recipient);
             callback(err);
           });
         }],
