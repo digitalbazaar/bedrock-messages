@@ -28,7 +28,7 @@ var store = database.collections.messages;
 var messagesSearchEndpoint =
   config.server.baseUri + config.messages.endpoints.messagesSearch;
 
-describe.only('bedrock-messages HTTP API', function() {
+describe('bedrock-messages HTTP API', function() {
   describe('unauthenticated requests', function() {
     it('should respond with 400 - PermissionDenied', function(done) {
       var user = mockData.identities.rsa4096;
@@ -75,7 +75,10 @@ describe.only('bedrock-messages HTTP API', function() {
           brMessages.store(
             helpers.createMessage({recipient: user.identity.id}), callback);
         },
-        get: ['insert', function(callback) {
+        process: ['insert', function(callback) {
+          brMessages._cleanupJob(callback);
+        }],
+        get: ['process', function(callback) {
           request.post(
             helpers.createHttpSigRequest(
               messagesSearchEndpoint + '/' + user.identity.id + '/new', user),
@@ -102,7 +105,10 @@ describe.only('bedrock-messages HTTP API', function() {
             callback();
           });
         },
-        get: ['insert', function(callback) {
+        process: ['insert', function(callback) {
+          brMessages._cleanupJob(callback);
+        }],
+        get: ['process', function(callback) {
           request.post(
             helpers.createHttpSigRequest(
               messagesSearchEndpoint + '/' + user.identity.id + '/new', user),

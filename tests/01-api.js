@@ -911,14 +911,17 @@ describe('bedrock-messages API requests', function() {
         getIdentity: function(callback) {
           brIdentity.get(null, recipient, callback);
         },
-        test: ['store', 'getIdentity', function(callback, results) {
+        process: ['store', 'getIdentity', function(callback) {
+          brMessages._cleanupJob(callback);
+        }],
+        test: ['process', function(callback, results) {
           brMessages._getNew(
             results.getIdentity[0], recipient, function(err, results) {
             should.not.exist(err);
             should.exist(results);
             results.should.be.an('array');
             results.should.have.length(1);
-            var message = results[0];
+            var message = results[0].value;
             message.should.be.an('object');
             should.exist(message['@context']);
             message['@context'].should.be.a('string');
@@ -961,11 +964,14 @@ describe('bedrock-messages API requests', function() {
         getIdentity: function(callback) {
           brIdentity.get(null, recipient, callback);
         },
-        test: ['store', 'getIdentity', function(callback, results) {
+        process: ['store', 'getIdentity', function(callback) {
+          brMessages._cleanupJob(callback);
+        }],
+        test: ['process', function(callback, results) {
           brMessages._getNew(
             results.getIdentity[0], recipient, function(err, results) {
             should.not.exist(err);
-            var message = results[0];
+            var message = results[0].value;
             message.should.be.an('object');
             // check message
             _.difference(Object.keys(message), Object.keys(referenceMessage))
@@ -980,41 +986,6 @@ describe('bedrock-messages API requests', function() {
         }]
       }, done);
     });
-    it('getNew adds a delivered event', function(done) {
-      var recipient = mockData.identities.rsa4096.identity.id;
-      var query = {
-        recipient: database.hash(recipient)
-      };
-      var message = helpers.createMessage({recipient: recipient});
-      async.auto({
-        store: function(callback) {
-          brMessages.store(message, callback);
-        },
-        getIdentity: function(callback) {
-          brIdentity.get(null, recipient, callback);
-        },
-        get: ['store', 'getIdentity', function(callback, results) {
-          brMessages._getNew(
-            results.getIdentity[0], recipient, function(err, results) {
-            results[0].recipient.should.equal(recipient);
-            callback(err);
-          });
-        }],
-        query: ['get', function(callback) {
-          store.find(query, {}).toArray(callback);
-        }],
-        test: ['query', function(callback, results) {
-          should.exist(results.query);
-          results.query.should.have.length(1);
-          var r = results.query[0].value;
-          r.meta.events.should.have.length(2);
-          var events = r.meta.events;
-          events[0].type.should.equal('created');
-          events[1].type.should.equal('delivered');
-          callback();
-        }]
-      }, done);
-    });
     it('not receive the same new message a second time', function(done) {
       var recipient = mockData.identities.rsa4096.identity.id;
       var message = helpers.createMessage({recipient: recipient});
@@ -1025,10 +996,13 @@ describe('bedrock-messages API requests', function() {
         getIdentity: function(callback) {
           brIdentity.get(null, recipient, callback);
         },
-        getFirst: ['store', 'getIdentity', function(callback, results) {
+        process: ['store', 'getIdentity', function(callback) {
+          brMessages._cleanupJob(callback);
+        }],
+        getFirst: ['process', function(callback, results) {
           brMessages._getNew(
             results.getIdentity[0], recipient, function(err, results) {
-            results[0].recipient.should.equal(recipient);
+            results[0].value.recipient.should.equal(recipient);
             callback(err);
           });
         }],
@@ -1062,7 +1036,10 @@ describe('bedrock-messages API requests', function() {
         getIdentity: function(callback) {
           brIdentity.get(null, recipient, callback);
         },
-        get: ['store', 'getIdentity', function(callback, results) {
+        process: ['store', 'getIdentity', function(callback) {
+          brMessages._cleanupJob(callback);
+        }],
+        get: ['process', function(callback, results) {
           brMessages._getNew(results.getIdentity[0], recipient, callback);
         }],
         test: ['get', function(callback, results) {
