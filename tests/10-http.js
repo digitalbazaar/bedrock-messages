@@ -28,7 +28,7 @@ var store = database.collections.messages;
 var messagesSearchEndpoint =
   config.server.baseUri + config.messages.endpoints.messagesSearch;
 
-describe('bedrock-messages HTTP API', function() {
+describe.only('bedrock-messages HTTP API', function() {
   describe('unauthenticated requests', function() {
     it('should respond with 400 - PermissionDenied', function(done) {
       var user = mockData.identities.rsa4096;
