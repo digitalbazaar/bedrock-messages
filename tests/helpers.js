@@ -45,7 +45,7 @@ api.createMessage = function(options) {
   return message;
 };
 
-api.createHttpSigRequest = function(url, identity) {
+api.createHttpSignatureRequest = function(url, identity) {
   var newRequest = {
     url: url,
     httpSignature: {

@@ -57,7 +57,7 @@ describe('bedrock-messages HTTP API', function() {
     it('return empty array if there are no new messages', function(done) {
       var user = mockData.identities.rsa4096;
       request.post(
-        helpers.createHttpSigRequest(
+        helpers.createHttpSignatureRequest(
           messagesSearchEndpoint + '/' + user.identity.id + '/new', user),
         function(err, res, body) {
         should.not.exist(err);
@@ -80,7 +80,7 @@ describe('bedrock-messages HTTP API', function() {
         }],
         get: ['process', function(callback) {
           request.post(
-            helpers.createHttpSigRequest(
+            helpers.createHttpSignatureRequest(
               messagesSearchEndpoint + '/' + user.identity.id + '/new', user),
             function(err, res, body) {
             should.not.exist(err);
@@ -110,7 +110,7 @@ describe('bedrock-messages HTTP API', function() {
         }],
         get: ['process', function(callback) {
           request.post(
-            helpers.createHttpSigRequest(
+            helpers.createHttpSignatureRequest(
               messagesSearchEndpoint + '/' + user.identity.id + '/new', user),
             function(err, res, body) {
             should.not.exist(err);
@@ -128,7 +128,7 @@ describe('bedrock-messages HTTP API', function() {
       var user = mockData.identities.rsa4096;
       var badUserId = 'did:' + uuid();
       request.post(
-        helpers.createHttpSigRequest(
+        helpers.createHttpSignatureRequest(
           messagesSearchEndpoint + '/' + badUserId + '/new', user),
         function(err, res, body) {
           should.not.exist(err);
