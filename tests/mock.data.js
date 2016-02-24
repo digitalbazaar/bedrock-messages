@@ -18,7 +18,7 @@ var userName = 'rsa4096';
 identities[userName] = {};
 identities[userName].identity = helpers.createIdentity(userName);
 identities[userName].identity.sysResourceRole.push({
-  sysRole: 'messages.registered',
+  sysRole: 'messages.user',
   generateResource: 'id'
 });
 identities[userName].keys = helpers.createKeyPair({
