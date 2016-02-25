@@ -900,7 +900,7 @@ describe('bedrock-messages message batching functions', function() {
     });
   }); // end deliverBatch
 
-  describe('cleanupJob function', function() {
+  describe('batchMessages function', function() {
     afterEach(function(done) {
       helpers.removeCollections(
         {collections: ['messagesBatch', 'messages']}, done);
@@ -919,13 +919,13 @@ describe('bedrock-messages message batching functions', function() {
         insertBatch: function(callback) {
           storeBatch.insert(batch, callback);
         },
-        cleanup: ['insertMessage', 'insertBatch', function(callback) {
-          brMessages._cleanupJob(callback);
+        batchMessages: ['insertMessage', 'insertBatch', function(callback) {
+          brMessages._batchMessages(callback);
         }],
-        readBatch: ['cleanup', function(callback) {
+        readBatch: ['batchMessages', function(callback) {
           brMessages._readBatch(batch.value.recipient, callback);
         }],
-        readMessage: ['cleanup', function(callback) {
+        readMessage: ['batchMessages', function(callback) {
           store.find({}).toArray(callback);
         }],
         test: ['readBatch', 'readMessage', function(callback, results) {
@@ -941,7 +941,7 @@ describe('bedrock-messages message batching functions', function() {
         }]
       }, done);
     });
-  }); // end cleanupJob
+  }); // end batchMessages
 
   describe('resetMessage state generation', function() {
     afterEach(function(done) {

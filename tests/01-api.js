@@ -912,7 +912,7 @@ describe('bedrock-messages API requests', function() {
           brIdentity.get(null, recipient, callback);
         },
         process: ['store', 'getIdentity', function(callback) {
-          brMessages._cleanupJob(callback);
+          brMessages._batchMessages(callback);
         }],
         test: ['process', function(callback, results) {
           brMessages._getNew(
@@ -965,7 +965,7 @@ describe('bedrock-messages API requests', function() {
           brIdentity.get(null, recipient, callback);
         },
         process: ['store', 'getIdentity', function(callback) {
-          brMessages._cleanupJob(callback);
+          brMessages._batchMessages(callback);
         }],
         test: ['process', function(callback, results) {
           brMessages._getNew(
@@ -997,7 +997,7 @@ describe('bedrock-messages API requests', function() {
           brIdentity.get(null, recipient, callback);
         },
         process: ['store', 'getIdentity', function(callback) {
-          brMessages._cleanupJob(callback);
+          brMessages._batchMessages(callback);
         }],
         getFirst: ['process', function(callback, results) {
           brMessages._getNew(
@@ -1037,7 +1037,7 @@ describe('bedrock-messages API requests', function() {
           brIdentity.get(null, recipient, callback);
         },
         process: ['store', 'getIdentity', function(callback) {
-          brMessages._cleanupJob(callback);
+          brMessages._batchMessages(callback);
         }],
         get: ['process', function(callback, results) {
           brMessages._getNew(results.getIdentity[0], recipient, callback);

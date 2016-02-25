@@ -76,7 +76,7 @@ describe('bedrock-messages HTTP API', function() {
             helpers.createMessage({recipient: user.identity.id}), callback);
         },
         process: ['insert', function(callback) {
-          brMessages._cleanupJob(callback);
+          brMessages._batchMessages(callback);
         }],
         get: ['process', function(callback) {
           request.post(
@@ -106,7 +106,7 @@ describe('bedrock-messages HTTP API', function() {
           });
         },
         process: ['insert', function(callback) {
-          brMessages._cleanupJob(callback);
+          brMessages._batchMessages(callback);
         }],
         get: ['process', function(callback) {
           request.post(
