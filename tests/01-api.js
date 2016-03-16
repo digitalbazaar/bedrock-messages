@@ -334,7 +334,7 @@ describe('bedrock-messages API requests', function() {
           brMessages.store(message, callback);
         },
         query: ['store', 'getIdentity', function(callback, results) {
-          brMessages._get(results.getIdentity[0], recipient, callback);
+          brMessages._get(results.getIdentity[0], {}, recipient, callback);
         }],
         test: ['query', function(callback, results) {
           should.exist(results.query);
@@ -389,7 +389,7 @@ describe('bedrock-messages API requests', function() {
         },
         test: ['store', 'getIdentity', function(callback, results) {
           brMessages._get(
-            results.getIdentity[0], recipient, function(err, results) {
+            results.getIdentity[0], {}, recipient, function(err, results) {
             should.not.exist(err);
             var message = results[0];
             message.should.be.an('object');
@@ -424,7 +424,7 @@ describe('bedrock-messages API requests', function() {
             null, mockData.identities.rsa4096.identity.id, callback);
         },
         get: ['insert', 'getIdentity', function(callback, results) {
-          brMessages._get(results.getIdentity[0], recipient, callback);
+          brMessages._get(results.getIdentity[0], {}, recipient, callback);
         }],
         test: ['get', function(callback, results) {
           should.exist(results.get);
@@ -454,7 +454,7 @@ describe('bedrock-messages API requests', function() {
         },
         get: ['insert', 'getIdentity', function(callback, results) {
           brMessages._get(
-            results.getIdentity[0], recipient, function(err, result) {
+            results.getIdentity[0], {}, recipient, function(err, result) {
             should.exist(err);
             err.should.be.an('object');
             err.name.should.be.a('string');
@@ -488,7 +488,7 @@ describe('bedrock-messages API requests', function() {
         },
         getId: ['store', 'getIdentity', function(callback, results) {
           // need the ids for the messages that have been stored
-          brMessages._get(results.getIdentity[0], recipient, callback);
+          brMessages._get(results.getIdentity[0], {}, recipient, callback);
         }],
         act: ['getId', function(callback, results) {
           var request = {
@@ -504,7 +504,7 @@ describe('bedrock-messages API requests', function() {
           results.act.result.nModified.should.equal(1);
           results.act.result.should.be.an('object');
           brMessages._get(
-            results.getIdentity[0], recipient, function(err, result) {
+            results.getIdentity[0], {}, recipient, function(err, result) {
             should.exist(result[0].meta.events);
             result[0].meta.events.should.be.an('array');
             var events = result[0].meta.events;
@@ -532,14 +532,16 @@ describe('bedrock-messages API requests', function() {
         },
         getId: ['store', 'getIdentity', function(callback, results) {
           // need the ids for the messages that have been stored
-          brMessages._get(null, recipient, callback);
+          brMessages._get(null, {}, recipient, callback);
         }],
         act: ['getId', function(callback, results) {
-          var request = {
-            operation: 'archive',
-            message: results.getId[0].id
-          };
-          brMessages._updateMessage(
+          var request = [
+            {
+              op: 'archive',
+              id: results.getId[0].id
+            }
+          ];
+          brMessages._batchUpdate(
             results.getIdentity[0], request, {recipient: recipient},
             function(err, result) {
             should.exist(err);
@@ -570,7 +572,7 @@ describe('bedrock-messages API requests', function() {
         },
         getId: ['store', 'getIdentity', function(callback, results) {
           // need the ids for the messages that have been stored
-          brMessages._get(results.getIdentity[0], recipient, callback);
+          brMessages._get(results.getIdentity[0], {}, recipient, callback);
         }],
         act: ['getId', function(callback, results) {
           var request = {
@@ -611,16 +613,22 @@ describe('bedrock-messages API requests', function() {
         },
         getIds: ['store', 'getIdentity', function(callback, results) {
           // need the ids for the messages that have been stored
-          brMessages._get(results.getIdentity[0], recipient, callback);
+          brMessages._get(results.getIdentity[0], {}, recipient, callback);
         }],
         act: ['getIds', function(callback, results) {
           var messageIds = results.getIds.map(function(message) {
             return message.id;
           });
-          var request = {
-            operation: 'archive',
-            messages: messageIds
-          };
+          var request = [
+            {
+              op: 'archive',
+              id: messageIds[1]
+            },
+            {
+              op: 'archive',
+              id: messageIds[0]
+            }
+          ];
           brMessages._batchUpdate(
             results.getIdentity[0], request, {recipient: recipient}, callback);
         }],
@@ -628,7 +636,7 @@ describe('bedrock-messages API requests', function() {
           should.exist(results.act.result.nModified);
           results.act.result.nModified.should.equal(2);
           brMessages._get(
-            results.getIdentity[0], recipient, function(err, result) {
+            results.getIdentity[0], {}, recipient, function(err, result) {
             should.exist(result[0].meta.archived);
             result[0].meta.archived.should.be.true;
             should.exist(result[0].meta.events[1]);
@@ -662,7 +670,7 @@ describe('bedrock-messages API requests', function() {
         },
         getIds: ['store', 'getIdentity', function(callback, results) {
           // need the ids for the messages that have been stored
-          brMessages._get(results.getIdentity[0], recipient, callback);
+          brMessages._get(results.getIdentity[0], {}, recipient, callback);
         }],
         act: ['getIds', function(callback, results) {
           var messageIds = results.getIds.map(function(message) {
@@ -670,10 +678,16 @@ describe('bedrock-messages API requests', function() {
           });
           // replace one of the message ids with an invalid id
           messageIds[1] = 'invalidMessageId1234';
-          var request = {
-            operation: 'archive',
-            messages: messageIds
-          };
+          var request = [
+            {
+              op: 'archive',
+              id: messageIds[1]
+            },
+            {
+              op: 'archive',
+              id: messageIds[0]
+            }
+          ];
           brMessages._batchUpdate(
             results.getIdentity[0], request, {recipient: recipient},
             function(err, result) {
@@ -703,17 +717,23 @@ describe('bedrock-messages API requests', function() {
           brIdentity.get(null, recipient, callback);
         },
         act: ['store', 'getIdentity', function(callback, results) {
-          var request = {
-            operation: 'foo',
-            messages: messages
-          };
+          var request = [
+            {
+              op: 'foo',
+              id: messages[1].id
+            },
+            {
+              op: 'foo',
+              id: messages[0].id
+            }
+          ];
           brMessages._batchUpdate(
             results.getIdentity[0], request, {recipient: recipient},
             function(err, results) {
             should.exist(err);
             should.exist(err.name);
             err.name.should.be.a('string');
-            err.name.should.equal('MessageUpdateBatch');
+            err.name.should.equal('MessageUpdate');
             err.details.httpStatusCode.should.equal(400);
             callback();
           });
@@ -740,7 +760,7 @@ describe('bedrock-messages API requests', function() {
         },
         getId: ['store', 'getIdentity', function(callback, results) {
           // need the ids for the messages that have been stored
-          brMessages._get(results.getIdentity[0], recipient, callback);
+          brMessages._get(results.getIdentity[0], {}, recipient, callback);
         }],
         act: ['getId', function(callback, results) {
           brMessages._deleteMessage(
@@ -752,7 +772,7 @@ describe('bedrock-messages API requests', function() {
           should.exist(results.act.result);
           results.act.result.should.be.an('object');
           brMessages._get(
-            results.getIdentity[0], recipient, function(err, result) {
+            results.getIdentity[0], {}, recipient, function(err, result) {
             should.not.exist(err);
             should.exist(result);
             result.should.be.an('array');
@@ -786,24 +806,21 @@ describe('bedrock-messages API requests', function() {
         },
         getIds: ['store', 'getIdentity', function(callback, results) {
           // need the ids for the messages that have been stored
-          brMessages._get(results.getIdentity[0], recipient, callback);
+          brMessages._get(results.getIdentity[0], {}, recipient, callback);
         }],
         act: ['getIds', function(callback, results) {
           var messageIds = results.getIds.map(function(message) {
             return message.id;
           });
-          var request = {
-            messages: messageIds
-          };
           brMessages._batchDelete(
-            results.getIdentity[0], request, {recipient: recipient}, callback);
+            results.getIdentity[0], messageIds, {recipient: recipient}, callback);
         }],
         test: ['act', function(callback, results) {
           should.exist(results.act);
           should.exist(results.act.result);
           results.act.result.should.be.a('object');
           brMessages._get(
-            results.getIdentity[0], recipient, function(err, result) {
+            results.getIdentity[0], {}, recipient, function(err, result) {
             should.not.exist(err);
             should.exist(result);
             result.should.be.an('array');
@@ -831,7 +848,7 @@ describe('bedrock-messages API requests', function() {
         },
         getIds: ['store', 'getIdentity', function(callback, results) {
           // need the ids for the messages that have been stored
-          brMessages._get(results.getIdentity[0], recipient, callback);
+          brMessages._get(results.getIdentity[0], {}, recipient, callback);
         }],
         act: ['getIds', function(callback, results) {
           var messageIds = results.getIds.map(function(message) {
@@ -839,12 +856,8 @@ describe('bedrock-messages API requests', function() {
           });
           // replace one of the message ids with an invalid id
           messageIds[1] = 'invalidMessageId1234';
-          var request = {
-            operation: 'archive',
-            messages: messageIds
-          };
           brMessages._batchDelete(
-            results.getIdentity[0], request, {recipient: recipient},
+            results.getIdentity[0], messageIds, {recipient: recipient},
             function(err, result) {
               should.exist(err);
               err.name.should.equal('BatchDeleteFailure');
@@ -1070,7 +1083,7 @@ describe('bedrock-messages API requests', function() {
         },
         getIds: ['store', 'getIdentity', function(callback, results) {
           // need the ids for the messages that have been stored
-          brMessages._get(results.getIdentity[0], recipient, callback);
+          brMessages._get(results.getIdentity[0], {}, recipient, callback);
         }],
         act: ['getIds', function(callback, results) {
           // pull out 3 ids for testing
@@ -1109,7 +1122,7 @@ describe('bedrock-messages API requests', function() {
         },
         getIds: ['store', 'getIdentity', function(callback, results) {
           // need the ids for the messages that have been stored
-          brMessages._get(results.getIdentity[0], recipient, callback);
+          brMessages._get(results.getIdentity[0], {}, recipient, callback);
         }],
         act: ['getIds', function(callback, results) {
           // pull out 2 good ids for testing and add an invalid id
