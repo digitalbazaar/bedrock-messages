@@ -59,7 +59,7 @@ api.createHttpSigRequest = function(url, identity) {
 
 api.createIdentity = function(userName) {
   var newIdentity = {
-    id: 'did:' + uuid.v4(),
+    id: 'did:' + uuid(),
     type: 'Identity',
     sysSlug: userName,
     label: userName,
