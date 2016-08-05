@@ -1,21 +1,20 @@
 /*
- * Copyright (c) 2015 Digital Bazaar, Inc. All rights reserved.
+ * Copyright (c) 2015-2016 Digital Bazaar, Inc. All rights reserved.
  */
- /* globals describe, before, after, it, should, beforeEach, afterEach */
- /* jshint node: true */
-
+/* globals describe, before, after, it, should, beforeEach, afterEach */
+/* jshint node: true, -W030 */
 'use strict';
 
 var _ = require('lodash');
 var async = require('async');
 var bedrock = require('bedrock');
 var brIdentity = require('bedrock-identity');
-var brMessages = require('../lib/messages');
+var brMessages = require('../../lib');
 var config = bedrock.config;
 var database = require('bedrock-mongodb');
 var helpers = require('./helpers');
 var mockData = require('./mock.data');
-var uuid = require('node-uuid').v4;
+var uuid = require('uuid').v4;
 
 var store = database.collections.messages;
 var storeInvalid = database.collections.invalidMessages;
@@ -33,7 +32,7 @@ var referenceMessage = {
   content: {
     body: '',
     holder: '',
-    link: '',
+    link: ''
   }
 };
 
@@ -813,7 +812,8 @@ describe('bedrock-messages API requests', function() {
             return message.id;
           });
           brMessages._batchDelete(
-            results.getIdentity[0], messageIds, {recipient: recipient}, callback);
+            results.getIdentity[0], messageIds, {recipient: recipient},
+            callback);
         }],
         test: ['act', function(callback, results) {
           should.exist(results.act);

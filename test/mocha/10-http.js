@@ -1,8 +1,8 @@
 /*
- * Copyright (c) 2015 Digital Bazaar, Inc. All rights reserved.
+ * Copyright (c) 2015-2016 Digital Bazaar, Inc. All rights reserved.
  */
- /* globals describe, before, after, it, should, beforeEach, afterEach */
- /* jshint node: true */
+/* globals describe, before, after, it, should, beforeEach, afterEach */
+/* jshint node: true */
 
 'use strict';
 
@@ -10,30 +10,35 @@ var _ = require('lodash');
 var async = require('async');
 var bedrock = require('bedrock');
 var brKey = require('bedrock-key');
-var brMessages = require('../lib/messages');
+var brMessages = require('../../lib');
 var config = bedrock.config;
-var util = bedrock.util;
 var helpers = require('./helpers');
-var brIdentity = require('bedrock-identity');
 var database = require('bedrock-mongodb');
 var request = require('request');
 var mockData = require('./mock.data');
-var uuid = require('node-uuid').v4;
-request = request.defaults({json: true});
-
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = 0;
+var url = require('url');
+var util = bedrock.util;
+var uuid = require('uuid').v4;
+request = request.defaults({json: true, strictSSL: false});
 
 var store = database.collections.messages;
 
-var messagesSearchEndpoint =
-  config.server.baseUri + config.messages.endpoints.messagesSearch;
+var urlObj = {
+  protocol: 'https',
+  host: config.server.host,
+  pathname: config.messages.endpoints.messages
+};
 
 describe('bedrock-messages HTTP API', function() {
   describe('unauthenticated requests', function() {
     it('should respond with 400 - PermissionDenied', function(done) {
       var user = mockData.identities.rsa4096;
-      request.post({
-        url: messagesSearchEndpoint + '/' + user.identity.id + '/new'
+      var clonedUrlObj = util.clone(urlObj);
+      clonedUrlObj.query = {
+        recipient: user.identity.id
+      };
+      request.get({
+        url: url.format(clonedUrlObj)
       }, function(err, res, body) {
         should.not.exist(err);
         res.statusCode.should.equal(400);
@@ -56,9 +61,13 @@ describe('bedrock-messages HTTP API', function() {
 
     it('return empty array if there are no new messages', function(done) {
       var user = mockData.identities.rsa4096;
-      request.post(
-        helpers.createHttpSigRequest(
-          messagesSearchEndpoint + '/' + user.identity.id + '/new', user),
+      var clonedUrlObj = util.clone(urlObj);
+      clonedUrlObj.query = {
+        recipient: user.id,
+        state: 'new'
+      };
+      request.get(
+        helpers.createHttpSigRequest(url.format(clonedUrlObj), user),
         function(err, res, body) {
         should.not.exist(err);
         res.statusCode.should.equal(200);
@@ -70,15 +79,19 @@ describe('bedrock-messages HTTP API', function() {
     });
     it('return one new message', function(done) {
       var user = mockData.identities.rsa4096;
+      var clonedUrlObj = util.clone(urlObj);
+      clonedUrlObj.query = {
+        recipient: user.identity.id,
+        state: 'new'
+      };
       async.auto({
         insert: function(callback) {
           brMessages.store(
             helpers.createMessage({recipient: user.identity.id}), callback);
         },
         get: ['insert', function(callback) {
-          request.post(
-            helpers.createHttpSigRequest(
-              messagesSearchEndpoint + '/' + user.identity.id + '/new', user),
+          request.get(
+            helpers.createHttpSigRequest(url.format(clonedUrlObj), user),
             function(err, res, body) {
             should.not.exist(err);
             res.statusCode.should.equal(200);
@@ -90,8 +103,15 @@ describe('bedrock-messages HTTP API', function() {
         }]
       }, done);
     });
+    // only returns 7 new messages, not including the 1 that was already
+    // retrieved during the previous test
     it('return seven new messages', function(done) {
       var user = mockData.identities.rsa4096;
+      var clonedUrlObj = util.clone(urlObj);
+      clonedUrlObj.query = {
+        recipient: user.identity.id,
+        state: 'new'
+      };
       var numberOfMessages = 7;
       async.auto({
         insert: function(callback) {
@@ -103,9 +123,8 @@ describe('bedrock-messages HTTP API', function() {
           });
         },
         get: ['insert', function(callback) {
-          request.post(
-            helpers.createHttpSigRequest(
-              messagesSearchEndpoint + '/' + user.identity.id + '/new', user),
+          request.get(
+            helpers.createHttpSigRequest(url.format(clonedUrlObj), user),
             function(err, res, body) {
             should.not.exist(err);
             res.statusCode.should.equal(200);
@@ -117,13 +136,33 @@ describe('bedrock-messages HTTP API', function() {
         }]
       }, done);
     });
+    // no query specified here, all messages for the authenticated identity
+    // should be returned
+    it('returns eight messages for authenticated identity', function(done) {
+      var user = mockData.identities.rsa4096;
+      var clonedUrlObj = util.clone(urlObj);
+      request.get(
+        helpers.createHttpSigRequest(url.format(clonedUrlObj), user),
+        function(err, res, body) {
+        should.not.exist(err);
+        res.statusCode.should.equal(200);
+        should.exist(body);
+        body.should.be.an('array');
+        body.should.have.length(8);
+        done();
+      });
+    });
     it('does not allow access to another user\'s messages',
       function(done) {
       var user = mockData.identities.rsa4096;
       var badUserId = 'did:' + uuid();
-      request.post(
-        helpers.createHttpSigRequest(
-          messagesSearchEndpoint + '/' + badUserId + '/new', user),
+      var clonedUrlObj = util.clone(urlObj);
+      clonedUrlObj.query = {
+        recipient: badUserId,
+        state: 'new'
+      };
+      request.get(
+        helpers.createHttpSigRequest(url.format(clonedUrlObj), user),
         function(err, res, body) {
           should.not.exist(err);
           res.statusCode.should.equal(403);
