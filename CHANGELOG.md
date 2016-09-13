@@ -1,5 +1,10 @@
 # bedrock-messages ChangeLog
 
+## 0.1.3 - 2016-09-13
+
+### Changed
+- Revise message validation schema.
+
 ## 0.1.2 - 2016-09-07
 
 ### Changed
