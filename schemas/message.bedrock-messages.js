@@ -1,7 +1,6 @@
 /*
  * Copyright (c) 2015-2016 Digital Bazaar, Inc. All rights reserved.
  */
-// var validation = require('bedrock-validation');
 var schemas = require('bedrock-validation').schemas;
 
 var schema = {
@@ -17,8 +16,7 @@ var schema = {
     content: {
       required: true,
       properties: {
-        body: {type: 'string', required: false},
-        holder: {type: 'string', required: true}
+        body: {type: 'string', required: false}
       }
     }
   }
