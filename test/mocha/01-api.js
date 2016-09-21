@@ -1,16 +1,14 @@
 /*
  * Copyright (c) 2015-2016 Digital Bazaar, Inc. All rights reserved.
  */
-/* globals describe, before, after, it, should, beforeEach, afterEach */
+/* globals describe, before, after, it, should, afterEach */
 /* jshint node: true, -W030 */
 'use strict';
 
 var _ = require('lodash');
 var async = require('async');
-var bedrock = require('bedrock');
 var brIdentity = require('bedrock-identity');
-var brMessages = require('../../lib');
-var config = bedrock.config;
+var brMessages = require('bedrock-messages');
 var database = require('bedrock-mongodb');
 var helpers = require('./helpers');
 var mockData = require('./mock.data');
@@ -120,9 +118,7 @@ describe('bedrock-messages API requests', function() {
           async.times(numberOfMessages, function(n, next) {
             brMessages.store(
               helpers.createMessage({recipient: recipient}), next);
-          }, function(err) {
-            callback();
-          });
+          }, callback);
         },
         query: ['store', function(callback) {
           store.find(query, {}).toArray(callback);
@@ -189,33 +185,30 @@ describe('bedrock-messages API requests', function() {
     });
     it('seven invalid message stored individually in invalidMessage collection',
       function(done) {
-      var holder = uuid();
-      var numberOfMessages = 7;
-      var message = helpers.createMessage({holder: holder});
-      var query = {
-        'value.message.content.holder': holder
-      };
-      async.auto({
-        store: function(callback) {
-          async.times(numberOfMessages, function(n, next) {
-            var message = helpers.createMessage({holder: holder});
-            delete message.recipient;
-            brMessages.store(message, next);
-          }, function(err) {
+        var holder = uuid();
+        var numberOfMessages = 7;
+        var query = {
+          'value.message.content.holder': holder
+        };
+        async.auto({
+          store: function(callback) {
+            async.times(numberOfMessages, function(n, next) {
+              var message = helpers.createMessage({holder: holder});
+              delete message.recipient;
+              brMessages.store(message, next);
+            }, callback);
+          },
+          query: ['store', function(callback) {
+            storeInvalid.find(query, {}).toArray(callback);
+          }],
+          test: ['query', function(callback, results) {
+            should.exist(results.query);
+            results.query.should.be.an('array');
+            results.query.should.have.length(7);
             callback();
-          });
-        },
-        query: ['store', function(callback) {
-          storeInvalid.find(query, {}).toArray(callback);
-        }],
-        test: ['query', function(callback, results) {
-          should.exist(results.query);
-          results.query.should.be.an('array');
-          results.query.should.have.length(7);
-          callback();
-        }]
-      }, done);
-    });
+          }]
+        }, done);
+      });
     it('store seven invalid messages as an array', function(done) {
       var holder = uuid();
       var numberOfMessages = 7;
@@ -389,28 +382,25 @@ describe('bedrock-messages API requests', function() {
         test: ['store', 'getIdentity', function(callback, results) {
           brMessages._get(
             results.getIdentity[0], {}, recipient, function(err, results) {
-            should.not.exist(err);
-            var message = results[0];
-            message.should.be.an('object');
-            // check message
-            _.difference(Object.keys(message), Object.keys(referenceMessage))
-              .should.have.length(0);
-            // check content
-            _.difference(
-              Object.keys(message.content),
-              Object.keys(referenceMessage.content))
-              .should.have.length(0);
-            callback(err);
-          });
+              should.not.exist(err);
+              var message = results[0];
+              message.should.be.an('object');
+              // check message
+              _.difference(Object.keys(message), Object.keys(referenceMessage))
+                .should.have.length(0);
+              // check content
+              _.difference(
+                Object.keys(message.content),
+                Object.keys(referenceMessage.content))
+                .should.have.length(0);
+              callback(err);
+            });
         }]
       }, done);
     });
     it('get seven new messages', function(done) {
       var recipient = mockData.identities.rsa4096.identity.id;
       var numberOfMessages = 7;
-      var query = {
-        recipient: database.hash(recipient)
-      };
       async.auto({
         insert: function(callback) {
           async.times(numberOfMessages, function(n, next) {
@@ -437,9 +427,6 @@ describe('bedrock-messages API requests', function() {
     it('should not allow access to another user\`s messages', function(done) {
       var recipient = uuid();
       var numberOfMessages = 7;
-      var query = {
-        recipient: database.hash(recipient)
-      };
       async.auto({
         insert: function(callback) {
           async.times(numberOfMessages, function(n, next) {
@@ -453,17 +440,17 @@ describe('bedrock-messages API requests', function() {
         },
         get: ['insert', 'getIdentity', function(callback, results) {
           brMessages._get(
-            results.getIdentity[0], {}, recipient, function(err, result) {
-            should.exist(err);
-            err.should.be.an('object');
-            err.name.should.be.a('string');
-            err.name.should.equal('PermissionDenied');
-            should.exist(err.details);
-            err.details.should.be.an('object');
-            err.details.sysPermission.should.be.a('string');
-            err.details.sysPermission.should.equal('MESSAGE_ACCESS');
-            callback();
-          });
+            results.getIdentity[0], {}, recipient, function(err) {
+              should.exist(err);
+              err.should.be.an('object');
+              err.name.should.be.a('string');
+              err.name.should.equal('PermissionDenied');
+              should.exist(err.details);
+              err.details.should.be.an('object');
+              err.details.sysPermission.should.be.a('string');
+              err.details.sysPermission.should.equal('MESSAGE_ACCESS');
+              callback();
+            });
         }]
       }, done);
     });
@@ -504,15 +491,15 @@ describe('bedrock-messages API requests', function() {
           results.act.result.should.be.an('object');
           brMessages._get(
             results.getIdentity[0], {}, recipient, function(err, result) {
-            should.exist(result[0].meta.events);
-            result[0].meta.events.should.be.an('array');
-            var events = result[0].meta.events;
-            events.should.have.length(2);
-            events[0].type.should.equal('created');
-            events[1].type.should.equal('archived');
-            events[1].date.should.be.a('number');
-            callback();
-          });
+              should.exist(result[0].meta.events);
+              result[0].meta.events.should.be.an('array');
+              var events = result[0].meta.events;
+              events.should.have.length(2);
+              events[0].type.should.equal('created');
+              events[1].type.should.equal('archived');
+              events[1].date.should.be.a('number');
+              callback();
+            });
         }]
       }, done);
     });
@@ -529,7 +516,7 @@ describe('bedrock-messages API requests', function() {
         getIdentity: function(callback) {
           brIdentity.get(null, testIdentity, callback);
         },
-        getId: ['store', 'getIdentity', function(callback, results) {
+        getId: ['store', 'getIdentity', function(callback) {
           // need the ids for the messages that have been stored
           brMessages._get(null, {}, recipient, callback);
         }],
@@ -542,17 +529,17 @@ describe('bedrock-messages API requests', function() {
           ];
           brMessages._batchUpdate(
             results.getIdentity[0], request, {recipient: recipient},
-            function(err, result) {
-            should.exist(err);
-            err.should.be.an('object');
-            err.name.should.be.a('string');
-            err.name.should.equal('PermissionDenied');
-            should.exist(err.details);
-            err.details.should.be.an('object');
-            err.details.sysPermission.should.be.a('string');
-            err.details.sysPermission.should.equal('MESSAGE_ACCESS');
-            callback();
-          });
+            function(err) {
+              should.exist(err);
+              err.should.be.an('object');
+              err.name.should.be.a('string');
+              err.name.should.equal('PermissionDenied');
+              should.exist(err.details);
+              err.details.should.be.an('object');
+              err.details.sysPermission.should.be.a('string');
+              err.details.sysPermission.should.equal('MESSAGE_ACCESS');
+              callback();
+            });
         }]
       }, done);
     });
@@ -580,11 +567,11 @@ describe('bedrock-messages API requests', function() {
           };
           brMessages._updateMessage(
             results.getIdentity[0], request, {recipient: recipient},
-            function(err, results) {
-            should.exist(err);
-            err.name.should.equal('MessageUpdate');
-            callback();
-          });
+            function(err) {
+              should.exist(err);
+              err.name.should.equal('MessageUpdate');
+              callback();
+            });
         }]
       }, done);
     });
@@ -636,18 +623,18 @@ describe('bedrock-messages API requests', function() {
           results.act.result.nModified.should.equal(2);
           brMessages._get(
             results.getIdentity[0], {}, recipient, function(err, result) {
-            should.exist(result[0].meta.archived);
-            result[0].meta.archived.should.be.true;
-            should.exist(result[0].meta.events[1]);
-            result[0].meta.events[1].type.should.equal('archived');
-            result[0].meta.events[1].date.should.be.a('number');
-            should.exist(result[1].meta.archived);
-            result[1].meta.archived.should.be.true;
-            should.exist(result[1].meta.events[1]);
-            result[1].meta.events[1].type.should.equal('archived');
-            result[1].meta.events[1].date.should.be.a('number');
-            callback();
-          });
+              should.exist(result[0].meta.archived);
+              result[0].meta.archived.should.be.true;
+              should.exist(result[0].meta.events[1]);
+              result[0].meta.events[1].type.should.equal('archived');
+              result[0].meta.events[1].date.should.be.a('number');
+              should.exist(result[1].meta.archived);
+              result[1].meta.archived.should.be.true;
+              should.exist(result[1].meta.events[1]);
+              result[1].meta.events[1].type.should.equal('archived');
+              result[1].meta.events[1].date.should.be.a('number');
+              callback();
+            });
         }]
       }, done);
     });
@@ -689,7 +676,7 @@ describe('bedrock-messages API requests', function() {
           ];
           brMessages._batchUpdate(
             results.getIdentity[0], request, {recipient: recipient},
-            function(err, result) {
+            function(err) {
               should.exist(err);
               err.name.should.equal('BatchUpdateFailure');
               should.exist(err.details.mongoResult.result.nModified);
@@ -728,14 +715,14 @@ describe('bedrock-messages API requests', function() {
           ];
           brMessages._batchUpdate(
             results.getIdentity[0], request, {recipient: recipient},
-            function(err, results) {
-            should.exist(err);
-            should.exist(err.name);
-            err.name.should.be.a('string');
-            err.name.should.equal('MessageUpdate');
-            err.details.httpStatusCode.should.equal(400);
-            callback();
-          });
+            function(err) {
+              should.exist(err);
+              should.exist(err.name);
+              err.name.should.be.a('string');
+              err.name.should.equal('MessageUpdate');
+              err.details.httpStatusCode.should.equal(400);
+              callback();
+            });
         }]
       }, done);
     });
@@ -772,12 +759,12 @@ describe('bedrock-messages API requests', function() {
           results.act.result.should.be.an('object');
           brMessages._get(
             results.getIdentity[0], {}, recipient, function(err, result) {
-            should.not.exist(err);
-            should.exist(result);
-            result.should.be.an('array');
-            result.should.have.length(0);
-            callback();
-          });
+              should.not.exist(err);
+              should.exist(result);
+              result.should.be.an('array');
+              result.should.have.length(0);
+              callback();
+            });
         }]
       }, done);
     });
@@ -821,12 +808,12 @@ describe('bedrock-messages API requests', function() {
           results.act.result.should.be.a('object');
           brMessages._get(
             results.getIdentity[0], {}, recipient, function(err, result) {
-            should.not.exist(err);
-            should.exist(result);
-            result.should.be.an('array');
-            result.should.have.length(0);
-            callback();
-          });
+              should.not.exist(err);
+              should.exist(result);
+              result.should.be.an('array');
+              result.should.have.length(0);
+              callback();
+            });
         }]
       }, done);
     });
@@ -858,7 +845,7 @@ describe('bedrock-messages API requests', function() {
           messageIds[1] = 'invalidMessageId1234';
           brMessages._batchDelete(
             results.getIdentity[0], messageIds, {recipient: recipient},
-            function(err, result) {
+            function(err) {
               should.exist(err);
               err.name.should.equal('BatchDeleteFailure');
               should.exist(err.details.mongoResult.result.n);
@@ -901,40 +888,40 @@ describe('bedrock-messages API requests', function() {
         test: ['store', 'getIdentity', function(callback, results) {
           brMessages._getNew(
             results.getIdentity[0], recipient, function(err, results) {
-            should.not.exist(err);
-            should.exist(results);
-            results.should.be.an('array');
-            results.should.have.length(1);
-            var message = results[0];
-            message.should.be.an('object');
-            should.exist(message['@context']);
-            message['@context'].should.be.a('string');
-            should.exist(message.date);
-            message.date.should.be.a('string');
-            should.exist(message.recipient);
-            message.recipient.should.be.a('string');
-            message.recipient.should.equal(recipient);
-            should.exist(message.sender);
-            message.sender.should.be.a('string');
-            message.sender.should.equal(sender);
-            should.exist(message.subject);
-            message.subject.should.be.a('string');
-            message.subject.should.equal(subject);
-            should.exist(message.type);
-            message.type.should.be.a('string');
-            message.type.should.equal(type);
-            should.exist(message.content);
-            // check content
-            message.content.should.be.an('object');
-            var content = message.content;
-            should.exist(content.holder);
-            content.holder.should.be.a('string');
-            content.holder.should.equal(holder);
-            should.exist(content.body);
-            content.body.should.be.a('string');
-            content.body.should.equal(body);
-            callback(err);
-          });
+              should.not.exist(err);
+              should.exist(results);
+              results.should.be.an('array');
+              results.should.have.length(1);
+              var message = results[0];
+              message.should.be.an('object');
+              should.exist(message['@context']);
+              message['@context'].should.be.a('string');
+              should.exist(message.date);
+              message.date.should.be.a('string');
+              should.exist(message.recipient);
+              message.recipient.should.be.a('string');
+              message.recipient.should.equal(recipient);
+              should.exist(message.sender);
+              message.sender.should.be.a('string');
+              message.sender.should.equal(sender);
+              should.exist(message.subject);
+              message.subject.should.be.a('string');
+              message.subject.should.equal(subject);
+              should.exist(message.type);
+              message.type.should.be.a('string');
+              message.type.should.equal(type);
+              should.exist(message.content);
+              // check content
+              message.content.should.be.an('object');
+              var content = message.content;
+              should.exist(content.holder);
+              content.holder.should.be.a('string');
+              content.holder.should.equal(holder);
+              should.exist(content.body);
+              content.body.should.be.a('string');
+              content.body.should.equal(body);
+              callback(err);
+            });
         }]
       }, done);
     });
@@ -951,19 +938,19 @@ describe('bedrock-messages API requests', function() {
         test: ['store', 'getIdentity', function(callback, results) {
           brMessages._getNew(
             results.getIdentity[0], recipient, function(err, results) {
-            should.not.exist(err);
-            var message = results[0];
-            message.should.be.an('object');
-            // check message
-            _.difference(Object.keys(message), Object.keys(referenceMessage))
-              .should.have.length(0);
-            // check content
-            _.difference(
-              Object.keys(message.content),
-              Object.keys(referenceMessage.content))
-              .should.have.length(0);
-            callback(err);
-          });
+              should.not.exist(err);
+              var message = results[0];
+              message.should.be.an('object');
+              // check message
+              _.difference(Object.keys(message), Object.keys(referenceMessage))
+                .should.have.length(0);
+              // check content
+              _.difference(
+                Object.keys(message.content),
+                Object.keys(referenceMessage.content))
+                .should.have.length(0);
+              callback(err);
+            });
         }]
       }, done);
     });
@@ -983,9 +970,9 @@ describe('bedrock-messages API requests', function() {
         get: ['store', 'getIdentity', function(callback, results) {
           brMessages._getNew(
             results.getIdentity[0], recipient, function(err, results) {
-            results[0].recipient.should.equal(recipient);
-            callback(err);
-          });
+              results[0].recipient.should.equal(recipient);
+              callback(err);
+            });
         }],
         query: ['get', function(callback) {
           store.find(query, {}).toArray(callback);
@@ -1015,36 +1002,31 @@ describe('bedrock-messages API requests', function() {
         getFirst: ['store', 'getIdentity', function(callback, results) {
           brMessages._getNew(
             results.getIdentity[0], recipient, function(err, results) {
-            results[0].recipient.should.equal(recipient);
-            callback(err);
-          });
+              results[0].recipient.should.equal(recipient);
+              callback(err);
+            });
         }],
         test: ['getFirst', function(callback, results) {
           brMessages._getNew(
             results.getIdentity[0], recipient, function(err, results) {
-            should.not.exist(err);
-            should.exist(results);
-            results.should.be.an('array');
-            results.should.have.length(0);
-            callback(err);
-          });
+              should.not.exist(err);
+              should.exist(results);
+              results.should.be.an('array');
+              results.should.have.length(0);
+              callback(err);
+            });
         }]
       }, done);
     });
     it('get seven new messages', function(done) {
       var recipient = mockData.identities.rsa4096.identity.id;
       var numberOfMessages = 7;
-      var query = {
-        recipient: database.hash(recipient)
-      };
       async.auto({
         store: function(callback) {
           async.times(numberOfMessages, function(n, next) {
             brMessages.store(
               helpers.createMessage({recipient: recipient}), next);
-          }, function(err) {
-            callback();
-          });
+          }, callback);
         },
         getIdentity: function(callback) {
           brIdentity.get(null, recipient, callback);
@@ -1074,9 +1056,7 @@ describe('bedrock-messages API requests', function() {
           async.times(numberOfMessages, function(n, next) {
             brMessages.store(
               helpers.createMessage({recipient: recipient}), next);
-          }, function(err, results) {
-            callback(err);
-          });
+          }, callback);
         },
         getIdentity: function(callback) {
           brIdentity.get(null, recipient, callback);
@@ -1113,9 +1093,7 @@ describe('bedrock-messages API requests', function() {
           async.times(numberOfMessages, function(n, next) {
             brMessages.store(
               helpers.createMessage({recipient: recipient}), next);
-          }, function(err, results) {
-            callback(err);
-          });
+          }, callback);
         },
         getIdentity: function(callback) {
           brIdentity.get(null, recipient, callback);
@@ -1131,7 +1109,7 @@ describe('bedrock-messages API requests', function() {
             results.getIds[1].id, results.getIds[3].id, 'invalidMessageId1234');
           brMessages.getMessages(
             results.getIdentity[0], testMessages, {recipient: recipient},
-            function(err, result) {
+            function(err) {
               should.exist(err);
               err.name.should.equal('GetMessagesFailure');
               should.exist(err.details.mongoResult);

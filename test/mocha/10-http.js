@@ -1,27 +1,22 @@
 /*
  * Copyright (c) 2015-2016 Digital Bazaar, Inc. All rights reserved.
  */
-/* globals describe, before, after, it, should, beforeEach, afterEach */
+/* globals describe, before, after, it, should */
 /* jshint node: true */
 
 'use strict';
 
-var _ = require('lodash');
 var async = require('async');
 var bedrock = require('bedrock');
-var brKey = require('bedrock-key');
-var brMessages = require('../../lib');
+var brMessages = require('bedrock-messages');
 var config = bedrock.config;
 var helpers = require('./helpers');
-var database = require('bedrock-mongodb');
 var request = require('request');
 var mockData = require('./mock.data');
 var url = require('url');
 var util = bedrock.util;
 var uuid = require('uuid').v4;
 request = request.defaults({json: true, strictSSL: false});
-
-var store = database.collections.messages;
 
 var urlObj = {
   protocol: 'https',
@@ -31,7 +26,7 @@ var urlObj = {
 
 describe('bedrock-messages HTTP API', function() {
   describe('unauthenticated requests', function() {
-    it('should respond with 400 - PermissionDenied', function(done) {
+    it('should respond with 400 - PermissionDenied', done => {
       var user = mockData.identities.rsa4096;
       var clonedUrlObj = util.clone(urlObj);
       clonedUrlObj.query = {
@@ -52,14 +47,14 @@ describe('bedrock-messages HTTP API', function() {
   });
 
   describe('authenticated requests', function() {
-    before('Prepare the database', function(done) {
+    before('Prepare the database', done => {
       helpers.prepareDatabase(mockData, done);
     });
-    after('Remove test data', function(done) {
+    after('Remove test data', done => {
       helpers.removeCollections(done);
     });
 
-    it('return empty array if there are no new messages', function(done) {
+    it('return empty array if there are no new messages', done => {
       var user = mockData.identities.rsa4096;
       var clonedUrlObj = util.clone(urlObj);
       clonedUrlObj.query = {
@@ -69,15 +64,15 @@ describe('bedrock-messages HTTP API', function() {
       request.get(
         helpers.createHttpSigRequest(url.format(clonedUrlObj), user),
         function(err, res, body) {
-        should.not.exist(err);
-        res.statusCode.should.equal(200);
-        should.exist(body);
-        body.should.be.an('array');
-        body.should.have.length(0);
-        done();
-      });
+          should.not.exist(err);
+          res.statusCode.should.equal(200);
+          should.exist(body);
+          body.should.be.an('array');
+          body.should.have.length(0);
+          done();
+        });
     });
-    it('return one new message', function(done) {
+    it('return one new message', done => {
       var user = mockData.identities.rsa4096;
       var clonedUrlObj = util.clone(urlObj);
       clonedUrlObj.query = {
@@ -93,19 +88,19 @@ describe('bedrock-messages HTTP API', function() {
           request.get(
             helpers.createHttpSigRequest(url.format(clonedUrlObj), user),
             function(err, res, body) {
-            should.not.exist(err);
-            res.statusCode.should.equal(200);
-            should.exist(body);
-            body.should.be.an('array');
-            body.should.have.length(1);
-            done();
-          });
+              should.not.exist(err);
+              res.statusCode.should.equal(200);
+              should.exist(body);
+              body.should.be.an('array');
+              body.should.have.length(1);
+              callback();
+            });
         }]
       }, done);
     });
     // only returns 7 new messages, not including the 1 that was already
     // retrieved during the previous test
-    it('return seven new messages', function(done) {
+    it('return seven new messages', done => {
       var user = mockData.identities.rsa4096;
       var clonedUrlObj = util.clone(urlObj);
       clonedUrlObj.query = {
@@ -118,42 +113,39 @@ describe('bedrock-messages HTTP API', function() {
           async.times(numberOfMessages, function(n, next) {
             brMessages.store(
               helpers.createMessage({recipient: user.identity.id}), next);
-          }, function(err) {
-            callback();
-          });
+          }, callback);
         },
         get: ['insert', function(callback) {
           request.get(
             helpers.createHttpSigRequest(url.format(clonedUrlObj), user),
             function(err, res, body) {
-            should.not.exist(err);
-            res.statusCode.should.equal(200);
-            should.exist(body);
-            body.should.be.an('array');
-            body.should.have.length(numberOfMessages);
-            done();
-          });
+              should.not.exist(err);
+              res.statusCode.should.equal(200);
+              should.exist(body);
+              body.should.be.an('array');
+              body.should.have.length(numberOfMessages);
+              callback();
+            });
         }]
       }, done);
     });
     // no query specified here, all messages for the authenticated identity
     // should be returned
-    it('returns eight messages for authenticated identity', function(done) {
+    it('returns eight messages for authenticated identity', done => {
       var user = mockData.identities.rsa4096;
       var clonedUrlObj = util.clone(urlObj);
       request.get(
         helpers.createHttpSigRequest(url.format(clonedUrlObj), user),
         function(err, res, body) {
-        should.not.exist(err);
-        res.statusCode.should.equal(200);
-        should.exist(body);
-        body.should.be.an('array');
-        body.should.have.length(8);
-        done();
-      });
+          should.not.exist(err);
+          res.statusCode.should.equal(200);
+          should.exist(body);
+          body.should.be.an('array');
+          body.should.have.length(8);
+          done();
+        });
     });
-    it('does not allow access to another user\'s messages',
-      function(done) {
+    it('does not allow access to another user\'s messages', done => {
       var user = mockData.identities.rsa4096;
       var badUserId = 'did:' + uuid();
       var clonedUrlObj = util.clone(urlObj);
