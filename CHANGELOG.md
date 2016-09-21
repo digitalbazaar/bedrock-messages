@@ -1,5 +1,11 @@
 # bedrock-messages ChangeLog
 
+## 0.1.4 - 2016-09-21
+
+### Changed
+- Use uuid for message ids.
+- Restructure test framework for CI.
+
 ## 0.1.3 - 2016-09-13
 
 ### Changed
