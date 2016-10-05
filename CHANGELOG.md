@@ -1,5 +1,11 @@
 # bedrock-messages ChangeLog
 
+## 0.1.5 - 2016-10-05
+
+### Fixed
+- Add prefers.ld middleware to GET endpoint.  This allows the front end to
+  configure routes on the /messages endpoint.
+
 ## 0.1.4 - 2016-09-21
 
 ### Changed
